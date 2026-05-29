@@ -14,6 +14,7 @@ import { calculateATSScore } from "../utils/atsCalculator";
 async function askAI(prompt) {
   const key = import.meta.env.VITE_GEMINI_API_KEY;
   if (!key) throw new Error("Add VITE_GEMINI_API_KEY to .env");
+  const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
     {
       method: "POST",
@@ -23,8 +24,10 @@ async function askAI(prompt) {
         generationConfig: { maxOutputTokens: 600, temperature: 0.7 },
       }),
     }
-  });
-  return (await res.json()).content?.[0]?.text||"";
+  );
+  const d = await res.json();
+  if (d.error) throw new Error(d.error.message || "Gemini error");
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
 export default function Analytics() {
