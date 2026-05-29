@@ -4,6 +4,7 @@ const upload = require("../middleware/upload");
 const c      = require("../controllers/userController");
 
 router.use(auth);
+router.get   ("/profile",  c.getProfile);
 router.put   ("/profile",  c.updateProfile);
 router.put   ("/password", c.changePassword);
 router.post  ("/avatar",   upload.single("avatar"), c.uploadAvatar);
