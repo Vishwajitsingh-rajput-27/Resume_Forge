@@ -1,0 +1,43 @@
+version: "3.9"
+services:
+  mongo:
+    image: mongo:7-jammy
+    container_name: rf_mongo
+    restart: unless-stopped
+    ports: ["27017:27017"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+    volumes: [mongo_data:/data/db]
+    healthcheck:
+      test: ["CMD","mongosh","--eval","db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: rf_api
+    restart: unless-stopped
+    ports: ["5000:5000"]
+    env_file: ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://admin:secret@mongo:27017/resumeforge?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes: [./backend:/app, /app/node_modules]
+    command: npm run dev
+
+  frontend:
+    build: ./frontend
+    container_name: rf_ui
+    restart: unless-stopped
+    ports: ["5173:5173"]
+    env_file: ./frontend/.env
+    depends_on: [backend]
+    volumes: [./frontend:/app, /app/node_modules]
+    command: npm run dev -- --host
+
+volumes:
+  mongo_data:
