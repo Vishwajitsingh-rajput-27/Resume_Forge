@@ -51,4 +51,10 @@ export const aiAPI = {
   projectDesc: (d) => api.post("/ai/project-desc", d),
 };
 
+export const userAPI = {
+  getProfile:    ()  => api.get("/user/profile"),
+  updateProfile: (d) => api.put("/user/profile", d),
+  deleteAccount: ()  => api.delete("/user/account"),
+};
+
 export default api;
