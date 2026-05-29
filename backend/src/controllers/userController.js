@@ -3,6 +3,14 @@ const Resume     = require("../models/Resume");
 const bcrypt     = require("bcryptjs");
 const cloudinary = require("../utils/cloudinary");
 
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ user });
+  } catch(e) { res.status(500).json({ error: "Could not fetch profile" }); }
+};
+
 exports.updateProfile = async (req, res) => {
   try {
     const { name, email } = req.body;
