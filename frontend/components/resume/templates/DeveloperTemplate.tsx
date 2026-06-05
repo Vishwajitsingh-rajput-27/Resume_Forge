@@ -1,0 +1,1 @@
+export { DeveloperTemplate } from './MinimalTemplate';

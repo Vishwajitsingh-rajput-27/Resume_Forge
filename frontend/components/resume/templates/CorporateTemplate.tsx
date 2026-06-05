@@ -1,0 +1,1 @@
+export { CorporateTemplate } from './MinimalTemplate';

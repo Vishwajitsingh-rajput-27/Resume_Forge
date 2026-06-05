@@ -1,0 +1,154 @@
+name: ResumeAI CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # ─── Backend Tests ──────────────────────────────────────────────────────────
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/resumeai_test
+          JWT_ACCESS_SECRET: test-access-secret-for-ci
+          JWT_REFRESH_SECRET: test-refresh-secret-for-ci
+          AI_PROVIDER: GROQ
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+
+  # ─── Frontend Tests & Build ─────────────────────────────────────────────────
+  test-frontend:
+    name: Frontend Tests & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+  # ─── Deploy Backend to Render ───────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend → Render
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+
+      - name: Wait for backend health
+        run: |
+          echo "Waiting 30s for Render to spin up..."
+          sleep 30
+          curl --retry 5 --retry-delay 10 --retry-connrefused \
+            "${{ secrets.BACKEND_URL }}/health" | grep '"status":"healthy"'
+
+  # ─── Deploy Frontend to Vercel ──────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend → Vercel
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+
+      - name: Build project
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+
+  # ─── Rollback on failure ────────────────────────────────────────────────────
+  rollback:
+    name: Rollback on Failure
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Notify failure
+        run: |
+          echo "::error::Deployment failed. Manual rollback may be required."
+          echo "Backend: Check Render dashboard → ${{ secrets.RENDER_SERVICE_ID }}"
+          echo "Frontend: Run 'vercel rollback' locally or revert the last Vercel deployment"
+
+      - name: Trigger Slack/Discord webhook (optional)
+        if: secrets.SLACK_WEBHOOK != ''
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{"text":"🚨 ResumeAI deployment failed on main. See GitHub Actions for details."}'
+        continue-on-error: true
