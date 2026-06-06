@@ -13,6 +13,51 @@
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_Now-00C896?style=for-the-badge&labelColor=000000)](https://resumeforge.vercel.app)
 
+<br/>
+
+<!-- ─── Frontend ─────────────────────────────────────────────────── -->
+**Frontend**
+
+![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=flat-square&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=flat-square&logo=framer&logoColor=white)
+![Zustand](https://img.shields.io/badge/Zustand-433E38?style=flat-square&logoColor=white)
+![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?style=flat-square&logo=reactquery&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22B5E9?style=flat-square&logoColor=white)
+
+<!-- ─── Backend ──────────────────────────────────────────────────── -->
+**Backend**
+
+![Node.js](https://img.shields.io/badge/Node.js_≥20-339933?style=flat-square&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
+![Helmet](https://img.shields.io/badge/Helmet-2D6A4F?style=flat-square&logoColor=white)
+![Winston](https://img.shields.io/badge/Winston-FF6B35?style=flat-square&logoColor=white)
+
+<!-- ─── Database & Storage ───────────────────────────────────────── -->
+**Database & Storage**
+
+![MongoDB](https://img.shields.io/badge/MongoDB_Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
+![Mongoose](https://img.shields.io/badge/Mongoose-880000?style=flat-square&logoColor=white)
+![Cloudinary](https://img.shields.io/badge/Cloudinary_CDN-3448C5?style=flat-square&logo=cloudinary&logoColor=white)
+
+<!-- ─── AI & APIs ────────────────────────────────────────────────── -->
+**AI & Integrations**
+
+![Groq](https://img.shields.io/badge/Groq_LLaMA_3.3-F55036?style=flat-square&logoColor=white)
+![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=flat-square&logo=google&logoColor=white)
+![ATS Engine](https://img.shields.io/badge/Custom_ATS_Engine-003366?style=flat-square&logoColor=white)
+![Google OAuth](https://img.shields.io/badge/Google_OAuth-4285F4?style=flat-square&logo=google&logoColor=white)
+
+<!-- ─── DevOps ───────────────────────────────────────────────────── -->
+**Deployment**
+
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=flat-square&logo=render&logoColor=black)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 
 </div>
 
@@ -559,17 +604,16 @@ Please follow the existing code style, comment non-obvious logic, and test local
 
 <div align="center">
 
-### Your Name
+### Vishwajitsingh Rajput
 
 *Full-Stack Developer · Computer Engineer*
 
-Your College / University
+Indira College of Engineering and Management, Pune
 
 <br/>
 
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/yourusername)
-[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/yourhandle)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/yourprofile)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Vishwajitsingh-rajput-27)
+[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/vishwajit._.27)
 
 </div>
 
