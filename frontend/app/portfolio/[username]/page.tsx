@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { Globe, Github, Linkedin, Mail, Phone, ExternalLink } from 'lucide-react';
+import { Globe, Github, Linkedin, Mail, ExternalLink } from 'lucide-react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface PortfolioData {
   personalInfo: { name: string; email: string; phone?: string; jobTitle?: string; linkedin?: string; github?: string; website?: string };
   summary?: string;
@@ -23,9 +22,9 @@ async function getPortfolio(username: string): Promise<PortfolioData | null> {
   } catch { return null; }
 }
 
-// ─── Metadata ─────────────────────────────────────────────────────────────────
-export async function generateMetadata({ params }: { params: { username: string } }): Promise<Metadata> {
-  const data = await getPortfolio(params.username);
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params;
+  const data = await getPortfolio(username);
   if (!data) return { title: 'Portfolio not found' };
   return {
     title: `${data.personalInfo.name} — ${data.personalInfo.jobTitle || 'Portfolio'}`,
@@ -33,16 +32,15 @@ export async function generateMetadata({ params }: { params: { username: string 
   };
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-export default async function PortfolioPage({ params }: { params: { username: string } }) {
-  const data = await getPortfolio(params.username);
+export default async function PortfolioPage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  const data = await getPortfolio(username);
   if (!data) notFound();
 
   const { personalInfo: p } = data;
 
   return (
     <main className="min-h-screen bg-[#09090B] text-white">
-      {/* Hero */}
       <section className="relative px-6 py-24 text-center overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#00C896]/8 rounded-full blur-3xl" />
@@ -52,23 +50,18 @@ export default async function PortfolioPage({ params }: { params: { username: st
             {p.name[0]}
           </div>
           <h1 className="font-display font-extrabold text-4xl md:text-6xl mb-3">{p.name}</h1>
-          {p.jobTitle && (
-            <p className="text-xl text-[#00C896] font-medium mb-4">{p.jobTitle}</p>
-          )}
-          {data.summary && (
-            <p className="text-[#A1A1AA] text-lg leading-relaxed mb-8 max-w-xl mx-auto">{data.summary}</p>
-          )}
+          {p.jobTitle && <p className="text-xl text-[#00C896] font-medium mb-4">{p.jobTitle}</p>}
+          {data.summary && <p className="text-[#A1A1AA] text-lg leading-relaxed mb-8 max-w-xl mx-auto">{data.summary}</p>}
           <div className="flex justify-center flex-wrap gap-3">
-            {p.email   && <a href={`mailto:${p.email}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Mail className="w-4 h-4 text-[#00C896]" />{p.email}</a>}
-            {p.github  && <a href={p.github.startsWith('http') ? p.github : `https://${p.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Github className="w-4 h-4" />GitHub</a>}
+            {p.email    && <a href={`mailto:${p.email}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Mail className="w-4 h-4 text-[#00C896]" />{p.email}</a>}
+            {p.github   && <a href={p.github.startsWith('http') ? p.github : `https://${p.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Github className="w-4 h-4" />GitHub</a>}
             {p.linkedin && <a href={p.linkedin.startsWith('http') ? p.linkedin : `https://${p.linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Linkedin className="w-4 h-4 text-blue-400" />LinkedIn</a>}
-            {p.website && <a href={p.website.startsWith('http') ? p.website : `https://${p.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Globe className="w-4 h-4" />Website</a>}
+            {p.website  && <a href={p.website.startsWith('http') ? p.website : `https://${p.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Globe className="w-4 h-4" />Website</a>}
           </div>
         </div>
       </section>
 
       <div className="max-w-5xl mx-auto px-6 pb-24 space-y-16">
-        {/* Skills */}
         {data.skills.length > 0 && (
           <section>
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Skills</h2>
@@ -87,13 +80,12 @@ export default async function PortfolioPage({ params }: { params: { username: st
           </section>
         )}
 
-        {/* Projects */}
         {data.projects.length > 0 && (
           <section>
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Projects</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {data.projects.map((proj, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00C896]/40 transition-colors group">
+                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00C896]/40 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="font-bold text-lg">{proj.name}</h3>
                     <div className="flex gap-2">
@@ -113,7 +105,6 @@ export default async function PortfolioPage({ params }: { params: { username: st
           </section>
         )}
 
-        {/* Experience */}
         {data.experience.length > 0 && (
           <section>
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Experience</h2>
@@ -142,7 +133,6 @@ export default async function PortfolioPage({ params }: { params: { username: st
           </section>
         )}
 
-        {/* Education */}
         {data.education.length > 0 && (
           <section>
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Education</h2>
@@ -158,17 +148,14 @@ export default async function PortfolioPage({ params }: { params: { username: st
           </section>
         )}
 
-        {/* Contact */}
         <section className="text-center py-12 border-t border-white/10">
           <h2 className="font-display font-bold text-2xl mb-3">Get In Touch</h2>
           <p className="text-[#A1A1AA] mb-6">Open to new opportunities and collaborations.</p>
-          <a href={`mailto:${p.email}`}
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-[#00C896]/20">
+          <a href={`mailto:${p.email}`} className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-[#00C896]/20">
             <Mail className="w-5 h-5" /> Say Hello
           </a>
           <p className="text-xs text-[#71717A] mt-8">
-            Portfolio powered by{' '}
-            <a href="/" className="text-[#00C896] hover:underline">ResumeAI</a>
+            Portfolio powered by <a href="/" className="text-[#00C896] hover:underline">ResumeAI</a>
           </p>
         </section>
       </div>
