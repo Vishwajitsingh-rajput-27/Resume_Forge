@@ -190,7 +190,7 @@ export default function CoverLetterPage() {
                     value={letter}
                     onChange={(e) => setLetter(e.target.value)}
                     className="w-full text-sm leading-relaxed bg-transparent focus:outline-none resize-none text-[var(--text-primary)]"
-                    style={{ minHeight: 380 }}
+                    minRows={14}
                   />
                 </motion.div>
               ) : (
