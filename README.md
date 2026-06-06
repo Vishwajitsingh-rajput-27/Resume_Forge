@@ -11,7 +11,7 @@
 
 <br/>
 
-[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_Now-00C896?style=for-the-badge&labelColor=000000)](https://resumeforge.vercel.app)
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_Now-00C896?style=for-the-badge&labelColor=000000)](https://resume-forge-six-gamma.vercel.app)
 
 <br/>
 
@@ -69,7 +69,7 @@
 
 <div align="center">
 
-### [**https://resumeforge.vercel.app**](https://resumeforge.vercel.app)
+### [**https://resume-forge-six-gamma.vercel.app**](https://resume-forge-six-gamma.vercel.app)
 
 ![ResumeForge Landing Page](assets/screenshots/hero.png)
 
@@ -625,6 +625,6 @@ Indira College of Engineering and Management, Pune
 
 <br/>
 
-[![Try ResumeForge](https://img.shields.io/badge/🚀_Try_ResumeForge_Now-000000?style=for-the-badge)](https://resumeforge.vercel.app)
+[![Try ResumeForge](https://img.shields.io/badge/🚀_Try_ResumeForge_Now-000000?style=for-the-badge)](https://resume-forge-six-gamma.vercel.app)
 
 </div>
