@@ -12,10 +12,10 @@ const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || '15m';
 const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || '7d';
 
 export const signAccessToken = (payload: TokenPayload): string =>
-  jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRES });
+  jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRES as any });
 
 export const signRefreshToken = (payload: TokenPayload): string =>
-  jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES });
+  jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES as any });
 
 export const verifyAccessToken = (token: string): TokenPayload =>
   jwt.verify(token, ACCESS_SECRET) as TokenPayload;
