@@ -120,7 +120,7 @@ router.post(
     body('name').trim().notEmpty(),
     body('role').trim().notEmpty(),
     body('company').trim().notEmpty(),
-    body('skills').isArray({ min: 1 }),
+    body('skills').isArray(),
     body('experienceSummary').trim().notEmpty().isLength({ max: 500 }),
     body('jobDescription').trim().notEmpty().isLength({ max: 3000 }),
   ],
