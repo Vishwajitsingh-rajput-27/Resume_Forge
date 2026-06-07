@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useResumeStore } from '@/store/resume-store';
 import { resumeApi } from '@/lib/api-client';
-
+import { exportToPDF, exportToDOCX } from '@/lib/frontend-export';
 // Steps
 import { PersonalInfoStep } from '@/components/resume/builder/steps/PersonalInfoStep';
 import { SummaryStep } from '@/components/resume/builder/steps/SummaryStep';
@@ -74,20 +74,23 @@ export default function ResumeBuilderPage() {
   }, [isDirty, saveResume]);
 
   const handleExport = async (format: 'pdf' | 'docx') => {
-    if (!resume.id) { toast.error('Save your resume first'); return; }
-    setIsExporting(true);
-    try {
-      const res = await resumeApi.export(resume.id, format);
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${resume.title}.${format}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`Downloaded as ${format.toUpperCase()}`);
-    } catch { toast.error('Export failed. Try again.'); }
-    finally { setIsExporting(false); }
-  };
+  setIsExporting(true);
+  try {
+    if (format === 'pdf') {
+      // Make sure preview is visible to capture it
+      setShowPreview(true);
+      await new Promise((r) => setTimeout(r, 300)); // wait for render
+      await exportToPDF('resume-preview-content', resume.title || 'resume');
+    } else {
+      await exportToDOCX(resume as unknown as Record<string, unknown>, resume.title || 'resume');
+    }
+    toast.success(`Downloaded as ${format.toUpperCase()}`);
+  } catch {
+    toast.error('Export failed. Please try again.');
+  } finally {
+    setIsExporting(false);
+  }
+};
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -230,8 +233,8 @@ export default function ResumeBuilderPage() {
               </div>
               <span className="text-xs text-[var(--text-muted)] ml-2">Live Preview</span>
             </div>
-            <div className="overflow-y-auto" style={{ height: 'calc(100vh - 280px)' }}>
-              <LivePreview />
+            <div id="resume-preview-content" className="overflow-y-auto" style={{ height: 'calc(100vh - 280px)' }}>
+             <LivePreview />
             </div>
           </motion.div>
         )}
