@@ -1,12 +1,19 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, Bell, Search } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/store/auth-store';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
+
+  // Sync plan from DB every time dashboard loads
+  // This ensures plan changes (promo codes) take effect without re-login
+  useEffect(() => {
+    refreshUser();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
@@ -27,18 +34,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="text-sm text-[var(--text-muted)]">Search…</span>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
+            {/* Plan badge */}
+            <span className={`hidden sm:inline text-[10px] font-bold px-2.5 py-1 rounded-full ${
+              user?.plan !== 'free'
+                ? 'bg-[#F7B731]/20 text-[#F7B731] border border-[#F7B731]/30'
+                : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
+            }`}>
+              {user?.plan?.toUpperCase() ?? 'FREE'}
+            </span>
+
             <button className="p-2 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-secondary)] relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#00C896]" />
             </button>
+
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center text-white text-sm font-bold">
               {user?.name?.[0]?.toUpperCase() || '?'}
             </div>
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
