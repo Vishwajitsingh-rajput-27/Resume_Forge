@@ -16,6 +16,7 @@ export interface IUser extends Document {
   role: 'user' | 'admin';
   plan: 'free' | 'pro' | 'enterprise';
   planExpiresAt?: Date;
+  redeemedCodes: string[];
   isEmailVerified: boolean;
   emailVerificationToken?: string;
   passwordResetToken?: string;
@@ -34,12 +35,13 @@ export interface IUser extends Document {
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
   canUseFeature(feature: string): boolean;
+  isProActive(): boolean;
 }
 
 const userSchema = new Schema<IUser>(
   {
     name:     { type: String, required: true, trim: true, maxlength: 100 },
-    email:    { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email address'] },
+    email:    { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email'] },
     password: { type: String, minlength: 8, select: false },
     googleId: { type: String, unique: true, sparse: true },
     avatar:   { type: String },
@@ -51,13 +53,15 @@ const userSchema = new Schema<IUser>(
     role:     { type: String, enum: ['user', 'admin'], default: 'user' },
     plan:     { type: String, enum: ['free', 'pro', 'enterprise'], default: 'free' },
     planExpiresAt: { type: Date },
-    isEmailVerified:       { type: Boolean, default: false },
+    // Tracks which promo codes this user has already redeemed
+    redeemedCodes: { type: [String], default: [] },
+    isEmailVerified:        { type: Boolean, default: false },
     emailVerificationToken: { type: String, select: false },
-    passwordResetToken:    { type: String, select: false },
-    passwordResetExpires:  { type: Date, select: false },
-    refreshToken:          { type: String, select: false },
-    lastLogin:             { type: Date },
-    isActive:              { type: Boolean, default: true },
+    passwordResetToken:     { type: String, select: false },
+    passwordResetExpires:   { type: Date, select: false },
+    refreshToken:           { type: String, select: false },
+    lastLogin:              { type: Date },
+    isActive:               { type: Boolean, default: true },
     usage: {
       resumesCreated:      { type: Number, default: 0 },
       aiGenerations:       { type: Number, default: 0 },
@@ -101,18 +105,30 @@ userSchema.methods.comparePassword = async function (candidate: string): Promise
   return bcrypt.compare(candidate, this.password);
 };
 
+// Check if pro/enterprise plan is still active (not expired)
+userSchema.methods.isProActive = function (): boolean {
+  if (this.plan === 'free') return false;
+  if (this.role === 'admin') return true;
+  if (!this.planExpiresAt) return true; // No expiry = lifetime
+  return new Date() < new Date(this.planExpiresAt);
+};
+
 const FREE_LIMITS: Record<string, number> = {
   resumes:        3,
-  ai_improvement: 20,
+  ai_improvement: 50,
   cover_letter:   3,
   interview_prep: 5,
   job_match:      5,
+  download:       10,
 };
 
 userSchema.methods.canUseFeature = function (feature: string): boolean {
-  if (this.plan !== 'free') return true;
   if (this.role === 'admin') return true;
 
+  // Pro/enterprise with valid (non-expired) plan = unlimited everything
+  if (this.plan !== 'free' && this.isProActive()) return true;
+
+  // If plan expired, downgrade check to free limits
   const limit = FREE_LIMITS[feature];
   if (limit === undefined) return true;
 
@@ -122,6 +138,7 @@ userSchema.methods.canUseFeature = function (feature: string): boolean {
     cover_letter:   this.usage.coverLettersCreated,
     interview_prep: this.usage.aiGenerations,
     job_match:      this.usage.aiGenerations,
+    download:       this.usage.downloadsCount,
   };
 
   return (usageMap[feature] ?? 0) < limit;
