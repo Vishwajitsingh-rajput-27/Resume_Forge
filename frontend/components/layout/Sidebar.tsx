@@ -87,22 +87,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Upgrade banner */}
       {user?.plan === 'free' && (
-        <div className="mx-3 mb-3 p-4 rounded-xl bg-gradient-to-br from-[#00C896]/15 to-[#6C63FF]/15 border border-[#00C896]/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Crown className="w-4 h-4 text-[#F7B731]" />
-            <span className="text-xs font-bold">Go Pro</span>
-          </div>
-          <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">
-            Unlimited resumes, AI generations & version history.
-          </p>
-          <Link
-            href="/pricing"
-            className="block text-center py-2 rounded-lg bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
-          >
-            Upgrade — $9/mo
-          </Link>
-        </div>
-      )}
+  <div className="mx-3 mb-3 p-4 rounded-xl bg-gradient-to-br from-[#F7B731]/15 to-[#F97316]/10 border border-[#F7B731]/25">
+    <div className="flex items-center gap-2 mb-2">
+      <Crown className="w-4 h-4 text-[#F7B731]" />
+      <span className="text-xs font-bold">Go Pro</span>
+    </div>
+    <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">
+      Unlimited resumes, AI generations & all features unlocked.
+    </p>
+    <Link
+      href="/upgrade"
+      onClick={onClose}
+      className="block text-center py-2 rounded-lg bg-gradient-to-r from-[#F7B731] to-[#F97316] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+    >
+      Upgrade with Promo Code
+    </Link>
+  </div>
+)}
 
       {/* User + settings */}
       <div className="border-t border-[var(--border-default)] p-3 space-y-0.5">
