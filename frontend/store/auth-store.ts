@@ -61,12 +61,12 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      loginWithGoogle: async (idToken) => {
+      loginWithGoogle: async (accessToken: string) => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/google', { idToken });
-          get().setTokens(data.accessToken, data.refreshToken);
-          set({ user: data.user, isAuthenticated: true, isLoading: false });
+         const { data } = await api.post('/auth/google', { accessToken });
+         get().setTokens(data.accessToken, data.refreshToken);
+         set({ user: data.user, isAuthenticated: true, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
           throw err;
