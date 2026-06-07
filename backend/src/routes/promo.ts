@@ -7,11 +7,14 @@ import { logger } from '../utils/logger';
 const router = Router();
 router.use(protect);
 
-// Valid promo codes — add more here anytime
-const PROMO_CODES: Record<string, { plan: 'pro' | 'enterprise'; durationDays: number; description: string }> = {
+const PROMO_CODES: Record<string, {
+  plan: 'pro' | 'enterprise';
+  durationDays: number;
+  description: string;
+}> = {
   'VISHU27': {
     plan: 'pro',
-    durationDays: 365,          // 1 year Pro
+    durationDays: 365,
     description: 'Founder promo — 1 year Pro access',
   },
 };
@@ -31,33 +34,48 @@ router.post(
       return res.status(400).json({ error: 'Invalid promo code. Please check and try again.' });
     }
 
+    // Always fetch fresh user
     const user = await User.findById(req.user!._id);
     if (!user) return res.status(404).json({ error: 'User not found.' });
 
-    // If already on same or higher plan
+    // ── Block reuse ────────────────────────────────────────────────────────
+    if (user.redeemedCodes.includes(code)) {
+      return res.status(400).json({
+        error: 'You have already redeemed this promo code.',
+      });
+    }
+
+    // Already on same or higher plan and it's still active
     if (user.plan === 'enterprise') {
-      return res.status(400).json({ error: 'You already have an Enterprise plan.' });
-    }
-    if (user.plan === promo.plan) {
-      return res.status(400).json({ error: `You already have a ${promo.plan} plan.` });
+      return res.status(400).json({ error: 'You already have the highest plan.' });
     }
 
-    // Calculate expiry
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + promo.durationDays);
+    if (user.plan === promo.plan && user.isProActive()) {
+      // Extend existing plan instead of blocking
+      const currentExpiry = user.planExpiresAt && user.planExpiresAt > new Date()
+        ? user.planExpiresAt
+        : new Date();
+      currentExpiry.setDate(currentExpiry.getDate() + promo.durationDays);
+      user.planExpiresAt = currentExpiry;
+    } else {
+      // Upgrade plan
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + promo.durationDays);
+      user.plan = promo.plan;
+      user.planExpiresAt = expiresAt;
+    }
 
-    // Upgrade user
-    user.plan = promo.plan;
-    user.planExpiresAt = expiresAt;
+    // ── Save redeemed code — prevents reuse ───────────────────────────────
+    user.redeemedCodes.push(code);
     await user.save();
 
-    logger.info(`[Promo] User ${user.email} upgraded to ${promo.plan} via code ${code}`);
+    logger.info(`[Promo] ${user.email} redeemed code ${code} → ${promo.plan} until ${user.planExpiresAt}`);
 
     return res.json({
-      success: true,
-      message: `🎉 You've been upgraded to ${promo.plan.toUpperCase()}!`,
-      plan: promo.plan,
-      expiresAt,
+      success:     true,
+      message:     `🎉 You've been upgraded to ${promo.plan.toUpperCase()}!`,
+      plan:        user.plan,
+      expiresAt:   user.planExpiresAt,
       description: promo.description,
     });
   }
