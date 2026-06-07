@@ -104,13 +104,14 @@ router.post(
 // ─── POST /api/auth/google ────────────────────────────────────────────────────
 // Accepts a Google ID token from the frontend (e.g. @react-oauth/google)
 router.post('/google', async (req: Request, res: Response) => {
-  const { idToken } = req.body;
-  if (!idToken) return res.status(400).json({ error: 'Google ID token required.' });
+  const { accessToken } = req.body;
+  if (!accessToken) return res.status(400).json({ error: 'Google access token required.' });
 
   try {
-    // Verify Google ID token via Google's tokeninfo endpoint (free, no SDK needed)
+    // Verify by fetching user info from Google
     const googleRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`
+      `https://www.googleapis.com/oauth2/v3/userinfo`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     if (!googleRes.ok) return res.status(401).json({ error: 'Invalid Google token.' });
 
@@ -122,11 +123,7 @@ router.post('/google', async (req: Request, res: Response) => {
 
     if (!user) {
       user = await User.create({
-        name,
-        email,
-        googleId,
-        avatar: picture,
-        isEmailVerified: true,
+        name, email, googleId, avatar: picture, isEmailVerified: true,
       });
     } else if (!user.googleId) {
       user.googleId = googleId;
