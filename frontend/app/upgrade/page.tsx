@@ -23,11 +23,11 @@ const PRO_FEATURES = [
 ];
 
 export default function UpgradePage() {
-  const router              = useRouter();
-  const { user, updateUser } = useAuthStore();
-  const [code, setCode]     = useState('');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const router                              = useRouter();
+  const { user, updateUser, refreshUser }   = useAuthStore(); // ← added refreshUser
+  const [code, setCode]                     = useState('');
+  const [loading, setLoading]               = useState(false);
+  const [success, setSuccess]               = useState(false);
 
   const handleRedeem = async () => {
     if (!code.trim()) { toast.error('Enter a promo code'); return; }
@@ -35,9 +35,8 @@ export default function UpgradePage() {
     try {
       const { data } = await api.post('/promo/redeem', { code });
 
-      // Immediately refresh user from backend so plan updates everywhere
-      const meRes = await api.get('/auth/me');
-      updateUser(meRes.data.user);
+      // Use refreshUser instead of manually calling /auth/me + updateUser
+      await refreshUser(); // ← replaced the two manual lines
 
       setSuccess(true);
       setCode('');
