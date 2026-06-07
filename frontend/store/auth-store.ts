@@ -8,6 +8,7 @@ export interface User {
   email: string;
   avatar?: string;
   plan: 'free' | 'pro' | 'enterprise';
+  planExpiresAt?: string;
   role: 'user' | 'admin';
   isEmailVerified: boolean;
   usage?: {
@@ -27,10 +28,11 @@ interface AuthState {
   isAuthenticated: boolean;
 
   login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithGoogle: (accessToken: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
+  refreshUser: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   setTokens: (access: string, refresh: string) => void;
 }
@@ -61,12 +63,12 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      loginWithGoogle: async (accessToken: string) => {
+      loginWithGoogle: async (accessToken) => {
         set({ isLoading: true });
         try {
-         const { data } = await api.post('/auth/google', { accessToken });
-         get().setTokens(data.accessToken, data.refreshToken);
-         set({ user: data.user, isAuthenticated: true, isLoading: false });
+          const { data } = await api.post('/auth/google', { accessToken });
+          get().setTokens(data.accessToken, data.refreshToken);
+          set({ user: data.user, isAuthenticated: true, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
           throw err;
@@ -89,6 +91,25 @@ export const useAuthStore = create<AuthState>()(
         try { await api.post('/auth/logout'); } catch {}
         delete api.defaults.headers.common['Authorization'];
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+      },
+
+      // ── Call this on every dashboard mount and after promo redemption ─────
+      refreshUser: async () => {
+        try {
+          const { data } = await api.get('/auth/me');
+          if (data.user) {
+            set({ user: data.user, isAuthenticated: true });
+          }
+        } catch (err) {
+          // Token expired — try refresh
+          const refreshed = await get().refreshAccessToken();
+          if (refreshed) {
+            try {
+              const { data } = await api.get('/auth/me');
+              if (data.user) set({ user: data.user, isAuthenticated: true });
+            } catch {}
+          }
+        }
       },
 
       refreshAccessToken: async () => {
@@ -114,9 +135,9 @@ export const useAuthStore = create<AuthState>()(
       name: 'resumeai-auth',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
+        user:            state.user,
+        accessToken:     state.accessToken,
+        refreshToken:    state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }
