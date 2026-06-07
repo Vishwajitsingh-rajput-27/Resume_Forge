@@ -1,3 +1,4 @@
+import promoRoutes from './routes/promo';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -130,6 +131,7 @@ app.use('/api/interview', interviewRoutes);
 app.use('/api/job-match', jobMatchRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/promo', promoRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
