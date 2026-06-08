@@ -72,6 +72,7 @@ function QuickAction({ href, icon: Icon, label, desc, color }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const isPro = user?.plan === 'pro' || user?.plan === 'enterprise';
 
   const { data: resumes = [] } = useQuery({
     queryKey: ['resumes'],
@@ -79,7 +80,7 @@ export default function DashboardPage() {
   });
 
   const stats = [
-    { icon: FileText, label: 'Resumes', value: resumes.length, sub: `${3 - resumes.length} remaining on free`, color: '#00C896' },
+    { icon: FileText, label: 'Resumes', value: resumes.length, sub: isPro ? 'Unlimited on Pro' : `${Math.max(0, 3 - resumes.length)} remaining on free`, color: '#00C896' },
     { icon: Target,   label: 'Best ATS Score', value: resumes.length ? `${Math.max(...resumes.map((r: { atsScore?: number }) => r.atsScore || 0))}%` : '—', sub: 'Run ATS analyzer', color: '#6C63FF' },
     { icon: Download, label: 'Downloads', value: user?.usage?.downloadsCount || 0, sub: 'Total exports', color: '#F7B731' },
     { icon: Globe,    label: 'Portfolio Sites', value: user?.usage?.portfoliosCreated || 0, sub: '1 free included', color: '#EC4899' },
