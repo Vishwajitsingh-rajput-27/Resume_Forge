@@ -85,15 +85,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         })}
       </nav>
 
-      {/* Upgrade banner */}
-      {user?.plan === 'free' && (
+{/* Upgrade banner — only for free users */}
+{user?.plan === 'free' && (
   <div className="mx-3 mb-3 p-4 rounded-xl bg-gradient-to-br from-[#F7B731]/15 to-[#F97316]/10 border border-[#F7B731]/25">
     <div className="flex items-center gap-2 mb-2">
       <Crown className="w-4 h-4 text-[#F7B731]" />
       <span className="text-xs font-bold">Go Pro</span>
     </div>
     <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">
-      Unlimited resumes, AI generations & all features unlocked.
+      Unlimited resumes, AI & all templates.
     </p>
     <Link
       href="/upgrade"
@@ -102,6 +102,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     >
       Upgrade with Promo Code
     </Link>
+  </div>
+)}
+
+{/* Pro badge — show for pro/enterprise users */}
+{user?.plan !== 'free' && (
+  <div className="mx-3 mb-3 p-3 rounded-xl bg-[#F7B731]/10 border border-[#F7B731]/20">
+    <div className="flex items-center gap-2">
+      <Crown className="w-4 h-4 text-[#F7B731]" />
+      <span className="text-xs font-bold text-[#F7B731]">Pro Active</span>
+      <span className="ml-auto text-[10px] text-[var(--text-muted)]">∞ Unlimited</span>
+    </div>
   </div>
 )}
 
