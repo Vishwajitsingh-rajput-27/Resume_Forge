@@ -8,6 +8,7 @@ import {
   Loader2, Sparkles, FileDown,
 } from 'lucide-react';
 import { useResumeStore } from '@/store/resume-store';
+import { useAuthStore } from '@/store/auth-store';
 import { resumeApi } from '@/lib/api-client';
 import { exportToPDF, exportToDOCX } from '@/lib/frontend-export';
 // Steps
@@ -42,6 +43,8 @@ const STEP_COMPONENTS = [
 ];
 
 export default function ResumeBuilderPage() {
+  const { user } = useAuthStore();
+  const isPro = user?.plan === 'pro' || user?.plan === 'enterprise';
   const { currentStep, setStep, nextStep, prevStep, resume, isDirty, setIsSaving, setLastSaved, setResumeId, isSaving } = useResumeStore();
   const [showPreview, setShowPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
