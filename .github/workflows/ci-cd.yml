@@ -137,6 +137,8 @@ jobs:
     needs: [deploy-backend, deploy-frontend]
     runs-on: ubuntu-latest
     if: failure()
+    env:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
     steps:
       - name: Notify failure
@@ -146,9 +148,9 @@ jobs:
           echo "Frontend: Run 'vercel rollback' locally or revert the last Vercel deployment"
 
       - name: Trigger Slack/Discord webhook (optional)
-        if: secrets.SLACK_WEBHOOK != ''
+        if: env.SLACK_WEBHOOK != ''
         run: |
-          curl -s -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+          curl -s -X POST "$SLACK_WEBHOOK" \
             -H "Content-Type: application/json" \
             -d '{"text":"🚨 ResumeAI deployment failed on main. See GitHub Actions for details."}'
         continue-on-error: true
