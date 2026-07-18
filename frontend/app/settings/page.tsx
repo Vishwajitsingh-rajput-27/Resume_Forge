@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +12,24 @@ import {
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth-store';
 import api, { aiApi } from '@/lib/api-client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const profileSchema = z.object({
   name:     z.string().min(2),
@@ -22,7 +41,11 @@ const profileSchema = z.object({
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Required'),
-  newPassword:     z.string().min(8, 'Min 8 characters'),
+  newPassword: z.string()
+    .min(8, 'Min 8 characters')
+    .max(128, 'Max 128 characters')
+    .regex(/[A-Z]/, 'Include an uppercase letter')
+    .regex(/[0-9]/, 'Include a number'),
   confirmPassword: z.string(),
 }).refine((d) => d.newPassword === d.confirmPassword, {
   message: 'Passwords do not match', path: ['confirmPassword'],
@@ -40,19 +63,68 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
 ];
 
+const NOTIFICATION_OPTIONS = [
+  { id: 'resumeTips', label: 'Resume tips & suggestions', desc: 'Local preference for future resume-tip messages', default: true },
+  { id: 'jobMatches', label: 'Job match alerts', desc: 'Local preference for future job-match messages', default: false },
+  { id: 'productUpdates', label: 'Product updates', desc: 'Local preference for future product-update messages', default: true },
+  { id: 'securityAlerts', label: 'Security alerts', desc: 'Local preference for future security messages', default: true },
+] as const;
+
+type NotificationId = (typeof NOTIFICATION_OPTIONS)[number]['id'];
+type NotificationPreferences = Record<NotificationId, boolean>;
+
+const DEFAULT_NOTIFICATIONS = Object.fromEntries(
+  NOTIFICATION_OPTIONS.map((option) => [option.id, option.default]),
+) as NotificationPreferences;
+
 export default function SettingsPage() {
-  const { user, updateUser } = useAuthStore();
+  const router = useRouter();
+  const { user, updateUser, setTokens, clearSession } = useAuthStore();
   const [tab, setTab]           = useState<TabId>('profile');
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPw, setSavingPw]           = useState(false);
   const [pingResult, setPingResult]       = useState<{ ok: boolean; provider: string; model: string; latencyMs: number } | null>(null);
   const [pinging, setPinging]             = useState(false);
+  const [deleteOpen, setDeleteOpen]       = useState(false);
+  const [deleting, setDeleting]           = useState(false);
+  const [notifications, setNotifications] = useState<NotificationPreferences>(DEFAULT_NOTIFICATIONS);
+  const notificationStorageKey = `resumeforge-notifications:${user?.id || 'current'}`;
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(notificationStorageKey);
+      if (stored) {
+        setNotifications({ ...DEFAULT_NOTIFICATIONS, ...JSON.parse(stored) });
+      } else {
+        setNotifications(DEFAULT_NOTIFICATIONS);
+      }
+    } catch {
+      // Keep safe defaults when browser storage is unavailable or malformed.
+    }
+  }, [notificationStorageKey]);
 
   // ── Profile form ────────────────────────────────────────────────────────────
   const profileForm = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { name: user?.name || '', phone: '', address: '', linkedin: '', github: '' },
+    defaultValues: {
+      name: user?.name || '',
+      phone: user?.phone || '',
+      address: user?.address || '',
+      linkedin: user?.linkedin || '',
+      github: user?.github || '',
+    },
   });
+
+  useEffect(() => {
+    if (!user) return;
+    profileForm.reset({
+      name: user.name || '',
+      phone: user.phone || '',
+      address: user.address || '',
+      linkedin: user.linkedin || '',
+      github: user.github || '',
+    });
+  }, [profileForm, user]);
 
   const saveProfile = async (data: ProfileData) => {
     setSavingProfile(true);
@@ -70,10 +142,13 @@ export default function SettingsPage() {
   const savePassword = async (data: PasswordData) => {
     setSavingPw(true);
     try {
-      await api.patch('/auth/change-password', {
+      const { data: session } = await api.patch('/auth/change-password', {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
+      if (session.accessToken && session.refreshToken) {
+        setTokens(session.accessToken, session.refreshToken);
+      }
       toast.success('Password changed!');
       pwForm.reset();
     } catch (err: unknown) {
@@ -93,6 +168,32 @@ export default function SettingsPage() {
     finally { setPinging(false); }
   };
 
+  const saveNotifications = () => {
+    try {
+      localStorage.setItem(notificationStorageKey, JSON.stringify(notifications));
+      toast.success('Preferences saved on this device.');
+    } catch {
+      toast.error('This browser could not save your preferences.');
+    }
+  };
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await api.delete('/auth/account');
+      clearSession();
+      toast.success('Your account and saved data were deleted.');
+      router.replace('/');
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { error?: string } } })
+        ?.response?.data?.error;
+      toast.error(message || 'Could not delete the account.');
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
@@ -104,15 +205,18 @@ export default function SettingsPage() {
         {/* Tab nav */}
         <nav className="w-44 shrink-0 space-y-0.5">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                tab === t.id
-                  ? 'bg-[#00C896]/15 text-[#00C896]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'
-              }`}>
+            <Button
+              key={t.id}
+              type="button"
+              variant={tab === t.id ? 'secondary' : 'ghost'}
+              onClick={() => setTab(t.id)}
+              className={`w-full justify-start gap-3 rounded-xl ${
+                tab === t.id ? 'bg-primary/15 text-primary hover:bg-primary/20' : 'text-[var(--text-secondary)]'
+              }`}
+            >
               <t.icon className="w-4 h-4" />
               {t.label}
-            </button>
+            </Button>
           ))}
         </nav>
 
@@ -123,8 +227,9 @@ export default function SettingsPage() {
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-6"
           >
+            <Card className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-elevated)]">
+              <CardContent className="p-6">
             {/* ── Profile ── */}
             {tab === 'profile' && (
               <div>
@@ -132,15 +237,17 @@ export default function SettingsPage() {
 
                 {/* Avatar */}
                 <div className="flex items-center gap-4 mb-6 pb-5 border-b border-[var(--border-default)]">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                    {user?.name?.[0]?.toUpperCase()}
-                  </div>
+                  <Avatar className="h-16 w-16 rounded-2xl shadow-lg">
+                    <AvatarFallback className="rounded-2xl bg-gradient-to-br from-primary to-[#6C63FF] text-2xl font-bold text-white">
+                      {user?.name?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
                     <p className="font-medium">{user?.name}</p>
                     <p className="text-sm text-[var(--text-muted)]">{user?.email}</p>
-                    <span className="mt-1 inline-block rounded-full bg-[#00C896]/15 px-2 py-0.5 text-xs font-bold text-[#00C896]">
+                    <Badge className="mt-1 bg-primary/15 text-primary hover:bg-primary/15">
                       Free &amp; open
-                    </span>
+                    </Badge>
                   </div>
                 </div>
 
@@ -153,19 +260,22 @@ export default function SettingsPage() {
                     { name: 'github' as const,   label: 'GitHub URL',   placeholder: 'https://github.com/...' },
                   ].map((f) => (
                     <div key={f.name}>
-                      <label className="block text-sm font-medium mb-1.5">{f.label}</label>
-                      <input {...profileForm.register(f.name)} placeholder={f.placeholder}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 focus:border-[#00C896] placeholder:text-[var(--text-muted)]" />
+                      <Label htmlFor={`profile-${f.name}`} className="mb-1.5 block">{f.label}</Label>
+                      <Input
+                        id={`profile-${f.name}`}
+                        {...profileForm.register(f.name)}
+                        placeholder={f.placeholder}
+                        aria-invalid={Boolean(profileForm.formState.errors[f.name])}
+                      />
                       {profileForm.formState.errors[f.name] && (
                         <p className="text-xs text-[var(--error)] mt-1">{profileForm.formState.errors[f.name]?.message}</p>
                       )}
                     </div>
                   ))}
-                  <button type="submit" disabled={savingProfile}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-opacity">
+                  <Button type="submit" disabled={savingProfile}>
                     {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Save Changes
-                  </button>
+                  </Button>
                 </form>
               </div>
             )}
@@ -181,26 +291,53 @@ export default function SettingsPage() {
                     { name: 'confirmPassword' as const, label: 'Confirm Password', placeholder: 'Repeat new password' },
                   ].map((f) => (
                     <div key={f.name}>
-                      <label className="block text-sm font-medium mb-1.5">{f.label}</label>
-                      <input {...pwForm.register(f.name)} type="password" placeholder={f.placeholder}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 focus:border-[#00C896] placeholder:text-[var(--text-muted)]" />
+                      <Label htmlFor={`password-${f.name}`} className="mb-1.5 block">{f.label}</Label>
+                      <Input
+                        id={`password-${f.name}`}
+                        {...pwForm.register(f.name)}
+                        type="password"
+                        maxLength={128}
+                        placeholder={f.placeholder}
+                        aria-invalid={Boolean(pwForm.formState.errors[f.name])}
+                      />
                       {pwForm.formState.errors[f.name] && (
                         <p className="text-xs text-[var(--error)] mt-1">{pwForm.formState.errors[f.name]?.message}</p>
                       )}
                     </div>
                   ))}
-                  <button type="submit" disabled={savingPw}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-opacity">
+                  <Button type="submit" disabled={savingPw}>
                     {savingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
                     Update Password
-                  </button>
+                  </Button>
                 </form>
 
-                <div className="mt-8 pt-6 border-t border-[var(--border-default)]">
+                <Separator className="mb-6 mt-8" />
+                <div>
                   <h3 className="font-semibold text-sm text-[var(--error)] mb-3">Danger Zone</h3>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--error)]/30 text-[var(--error)] text-sm font-medium hover:bg-[var(--error)]/10 transition-colors">
-                    <Trash2 className="w-4 h-4" /> Delete Account
-                  </button>
+                  <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                    <DialogTrigger asChild>
+                      <Button type="button" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                        <Trash2 className="w-4 h-4" /> Delete account
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Delete your ResumeForge account?</DialogTitle>
+                        <DialogDescription>
+                          This permanently deletes your account and every saved resume. Export anything you need first.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter className="gap-2">
+                        <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
+                          Keep account
+                        </Button>
+                        <Button type="button" variant="destructive" onClick={deleteAccount} disabled={deleting}>
+                          {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                          Delete permanently
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             )}
@@ -217,46 +354,48 @@ export default function SettingsPage() {
 
                 <div className="space-y-3 mb-6">
                   {[
-                    { name: 'Groq', url: 'https://console.groq.com', models: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'gemma2-9b-it'], free: '14,400 req/day', color: '#F97316' },
-                    { name: 'Gemini', url: 'https://aistudio.google.com', models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'], free: '1M tokens/day (Flash)', color: '#3B82F6' },
+                    { name: 'Groq', url: 'https://console.groq.com', models: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'qwen/qwen3.6-27b'], free: 'Free-tier quotas vary', color: '#F97316' },
+                    { name: 'Gemini', url: 'https://aistudio.google.com', models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'], free: 'Free-tier quotas vary', color: '#3B82F6' },
                   ].map((provider) => (
-                    <div key={provider.name} className="p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-subtle)]">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm">{provider.name}</span>
-                        <a href={provider.url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-                          Get free key <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
+                    <Card key={provider.name} className="rounded-xl border-[var(--border-default)] bg-[var(--bg-subtle)] shadow-none">
+                      <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-2">
+                        <CardTitle className="text-sm">{provider.name}</CardTitle>
+                        <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground">
+                          <a href={provider.url} target="_blank" rel="noopener noreferrer">
+                            Get free key <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </Button>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
                       <p className="text-xs text-[#10B981] mb-2">✓ Free: {provider.free}</p>
                       <div className="flex flex-wrap gap-1">
                         {provider.models.map((m) => (
-                          <span key={m} className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-[var(--bg-muted)] text-[var(--text-muted)]">{m}</span>
+                          <Badge key={m} variant="secondary" className="font-mono text-[9px] font-normal">{m}</Badge>
                         ))}
                       </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
 
-                <button onClick={pingAI} disabled={pinging}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border-default)] text-sm font-medium hover:border-[var(--border-strong)] transition-all disabled:opacity-60">
+                <Button type="button" variant="outline" onClick={pingAI} disabled={pinging}>
                   {pinging ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                   Test Connection
-                </button>
+                </Button>
 
                 {pingResult && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                    className={`mt-3 p-3 rounded-xl border text-sm flex items-center gap-3 ${
-                      pingResult.ok ? 'bg-[#10B981]/10 border-[#10B981]/20' : 'bg-[var(--error)]/10 border-[var(--error)]/20'
-                    }`}>
+                    className="mt-3">
+                    <Alert variant={pingResult.ok ? 'success' : 'destructive'}>
                     {pingResult.ok
-                      ? <Check className="w-4 h-4 text-[#10B981] shrink-0" />
-                      : <AlertCircle className="w-4 h-4 text-[var(--error)] shrink-0" />}
-                    <span>
+                      ? <Check />
+                      : <AlertCircle />}
+                    <AlertDescription>
                       {pingResult.ok
                         ? `✓ ${pingResult.provider} (${pingResult.model}) — ${pingResult.latencyMs}ms`
                         : 'Connection failed. Check your API key in .env'}
-                    </span>
+                    </AlertDescription>
+                    </Alert>
                   </motion.div>
                 )}
               </div>
@@ -265,28 +404,41 @@ export default function SettingsPage() {
             {/* ── Notifications ── */}
             {tab === 'notifications' && (
               <div>
-                <h2 className="font-semibold text-base mb-5">Notification Preferences</h2>
+                <h2 className="mb-3 text-base font-semibold">On-device preferences</h2>
+                <Alert className="mb-5">
+                  <Bell />
+                  <AlertDescription>
+                    These switches are stored only in this browser. They do not subscribe you to email,
+                    push, or in-app notifications yet.
+                  </AlertDescription>
+                </Alert>
                 <div className="space-y-4">
-                  {[
-                    { label: 'Resume tips & suggestions', desc: 'Weekly AI tips to improve your resume', default: true },
-                    { label: 'Job match alerts', desc: 'When new jobs match your profile', default: false },
-                    { label: 'Product updates', desc: 'New features and improvements', default: true },
-                    { label: 'Security alerts', desc: 'Login activity and account changes', default: true },
-                  ].map((n) => (
+                  {NOTIFICATION_OPTIONS.map((n) => (
                     <div key={n.label} className="flex items-center justify-between py-3 border-b border-[var(--border-default)] last:border-0">
                       <div>
-                        <p className="text-sm font-medium">{n.label}</p>
+                        <Label htmlFor={`notification-${n.id}`}>{n.label}</Label>
                         <p className="text-xs text-[var(--text-muted)]">{n.desc}</p>
                       </div>
-                      <input type="checkbox" defaultChecked={n.default} className="w-4 h-4 accent-[#00C896]" />
+                      <Checkbox
+                        id={`notification-${n.id}`}
+                        checked={notifications[n.id]}
+                        onChange={(event) =>
+                          setNotifications((current) => ({
+                            ...current,
+                            [n.id]: event.target.checked,
+                          }))
+                        }
+                      />
                     </div>
                   ))}
                 </div>
-                <button className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold text-sm hover:opacity-90 transition-opacity">
-                  <Check className="w-4 h-4" /> Save Preferences
-                </button>
+                <Button type="button" className="mt-5" onClick={saveNotifications}>
+                  <Check className="w-4 h-4" /> Save on this device
+                </Button>
               </div>
             )}
+              </CardContent>
+            </Card>
           </motion.div>
         </div>
       </div>

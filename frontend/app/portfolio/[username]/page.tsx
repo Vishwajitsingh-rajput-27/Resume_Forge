@@ -1,6 +1,13 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { Globe, Github, Linkedin, Mail, ExternalLink } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface PortfolioData {
   personalInfo: { name: string; email: string; phone?: string; jobTitle?: string; linkedin?: string; github?: string; website?: string };
@@ -11,11 +18,27 @@ interface PortfolioData {
   education: Array<{ institution: string; degree: string; specialization?: string; startYear: number; endYear?: number }>;
 }
 
+function safeExternalUrl(value?: string): string | null {
+  const raw = value?.trim();
+  if (!raw) return null;
+
+  try {
+    const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(raw);
+    const url = new URL(hasScheme ? raw : `https://${raw.replace(/^\/+/, '')}`);
+
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    if (url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 async function getPortfolio(username: string): Promise<PortfolioData | null> {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/portfolios/${username}`,
-      { next: { revalidate: 3600 } }
+      { cache: 'no-store' },
     );
     if (!res.ok) return null;
     return res.json();
@@ -38,6 +61,9 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
   if (!data) notFound();
 
   const { personalInfo: p } = data;
+  const githubUrl = safeExternalUrl(p.github);
+  const linkedinUrl = safeExternalUrl(p.linkedin);
+  const websiteUrl = safeExternalUrl(p.website);
 
   return (
     <main className="min-h-screen bg-[#09090B] text-white">
@@ -53,10 +79,10 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
           {p.jobTitle && <p className="text-xl text-[#00C896] font-medium mb-4">{p.jobTitle}</p>}
           {data.summary && <p className="text-[#A1A1AA] text-lg leading-relaxed mb-8 max-w-xl mx-auto">{data.summary}</p>}
           <div className="flex justify-center flex-wrap gap-3">
-            {p.email    && <a href={`mailto:${p.email}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Mail className="w-4 h-4 text-[#00C896]" />{p.email}</a>}
-            {p.github   && <a href={p.github.startsWith('http') ? p.github : `https://${p.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Github className="w-4 h-4" />GitHub</a>}
-            {p.linkedin && <a href={p.linkedin.startsWith('http') ? p.linkedin : `https://${p.linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Linkedin className="w-4 h-4 text-blue-400" />LinkedIn</a>}
-            {p.website  && <a href={p.website.startsWith('http') ? p.website : `https://${p.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all"><Globe className="w-4 h-4" />Website</a>}
+            {p.email && <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={`mailto:${p.email}`}><Mail className="text-[#00C896]" />{p.email}</a></Button>}
+            {githubUrl && <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={githubUrl} target="_blank" rel="noopener noreferrer"><Github />GitHub</a></Button>}
+            {linkedinUrl && <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={linkedinUrl} target="_blank" rel="noopener noreferrer"><Linkedin className="text-blue-400" />LinkedIn</a></Button>}
+            {websiteUrl && <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={websiteUrl} target="_blank" rel="noopener noreferrer"><Globe />Website</a></Button>}
           </div>
         </div>
       </section>
@@ -67,14 +93,16 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Skills</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.skills.map((cat, i) => (
-                <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                <Card key={i} className="border-white/10 bg-white/5 text-white shadow-none">
+                  <CardContent className="p-5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#00C896] mb-3">{cat.category}</h3>
                   <div className="flex flex-wrap gap-2">
                     {cat.skills.map((skill) => (
-                      <span key={skill} className="px-3 py-1 rounded-full bg-white/10 text-sm">{skill}</span>
+                      <Badge key={skill} className="bg-white/10 text-white hover:bg-white/10">{skill}</Badge>
                     ))}
                   </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </section>
@@ -84,23 +112,30 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
           <section>
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Projects</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {data.projects.map((proj, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00C896]/40 transition-colors">
+              {data.projects.map((proj, i) => {
+                const projectGithubUrl = safeExternalUrl(proj.githubUrl);
+                const projectLiveUrl = safeExternalUrl(proj.liveUrl);
+
+                return (
+                  <Card key={i} className="border-white/10 bg-white/5 text-white shadow-none transition-colors hover:border-[#00C896]/40">
+                  <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="font-bold text-lg">{proj.name}</h3>
                     <div className="flex gap-2">
-                      {proj.githubUrl && <a href={proj.githubUrl} target="_blank" rel="noopener noreferrer" className="text-[#A1A1AA] hover:text-white transition-colors"><Github className="w-4 h-4" /></a>}
-                      {proj.liveUrl  && <a href={proj.liveUrl}   target="_blank" rel="noopener noreferrer" className="text-[#A1A1AA] hover:text-[#00C896] transition-colors"><ExternalLink className="w-4 h-4" /></a>}
+                      {projectGithubUrl && <a href={projectGithubUrl} target="_blank" rel="noopener noreferrer" aria-label={`View ${proj.name} source`} className="text-[#A1A1AA] hover:text-white transition-colors"><Github className="w-4 h-4" /></a>}
+                      {projectLiveUrl && <a href={projectLiveUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${proj.name} project`} className="text-[#A1A1AA] hover:text-[#00C896] transition-colors"><ExternalLink className="w-4 h-4" /></a>}
                     </div>
                   </div>
                   <p className="text-[#A1A1AA] text-sm leading-relaxed mb-4">{proj.description}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {proj.technologies.map((t) => (
-                      <span key={t} className="px-2.5 py-0.5 rounded-full bg-[#00C896]/15 text-[#00C896] text-xs font-medium">{t}</span>
+                      <Badge key={t} className="bg-[#00C896]/15 text-[#00C896] hover:bg-[#00C896]/15">{t}</Badge>
                     ))}
                   </div>
-                </div>
-              ))}
+                  </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </section>
         )}
@@ -110,7 +145,8 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Experience</h2>
             <div className="space-y-4">
               {data.experience.map((exp, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                <Card key={i} className="border-white/10 bg-white/5 text-white shadow-none">
+                  <CardContent className="p-6">
                   <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
                     <div>
                       <h3 className="font-bold text-lg">{exp.role}</h3>
@@ -127,7 +163,8 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
                       </li>
                     ))}
                   </ul>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </section>
@@ -138,11 +175,13 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
             <h2 className="font-display font-bold text-2xl mb-6 text-center">Education</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {data.education.map((edu, i) => (
-                <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                <Card key={i} className="border-white/10 bg-white/5 text-white shadow-none">
+                  <CardContent className="p-5">
                   <h3 className="font-bold">{edu.degree}{edu.specialization ? ` in ${edu.specialization}` : ''}</h3>
                   <p className="text-[#00C896] text-sm mt-0.5">{edu.institution}</p>
                   <p className="text-xs text-[#71717A] mt-1">{edu.startYear} — {edu.endYear || 'Present'}</p>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </section>
@@ -151,11 +190,13 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
         <section className="text-center py-12 border-t border-white/10">
           <h2 className="font-display font-bold text-2xl mb-3">Get In Touch</h2>
           <p className="text-[#A1A1AA] mb-6">Open to new opportunities and collaborations.</p>
-          <a href={`mailto:${p.email}`} className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-[#00C896]/20">
-            <Mail className="w-5 h-5" /> Say Hello
-          </a>
+          <Button asChild size="lg">
+            <a href={`mailto:${p.email}`}>
+              <Mail /> Say hello
+            </a>
+          </Button>
           <p className="text-xs text-[#71717A] mt-8">
-            Portfolio powered by <a href="/" className="text-[#00C896] hover:underline">ResumeForge</a>
+            Portfolio powered by <Link href="/" className="text-[#00C896] hover:underline">ResumeForge</Link>
           </p>
         </section>
       </div>

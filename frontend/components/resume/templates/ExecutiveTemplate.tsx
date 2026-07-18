@@ -33,7 +33,6 @@ export function ExecutiveTemplate({ data }: ResumeTemplateProps) {
         </p>
         <h1
           className="mt-2 text-[29px] font-normal leading-none tracking-[-0.025em]"
-          style={{ fontFamily: 'Georgia, Cambria, serif' }}
         >
           {personal.name || 'Your Name'}
         </h1>
@@ -55,7 +54,6 @@ export function ExecutiveTemplate({ data }: ResumeTemplateProps) {
           <SectionHeading>Executive Summary</SectionHeading>
           <p
             className="px-5 text-center text-[11px] leading-[1.65] text-gray-700"
-            style={{ fontFamily: 'Georgia, Cambria, serif' }}
           >
             {summary}
           </p>

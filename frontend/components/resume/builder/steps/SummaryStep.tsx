@@ -5,6 +5,10 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { toast } from 'sonner';
 import { useResumeStore } from '@/store/resume-store';
 import { aiApi } from '@/lib/api-client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 const WORD_TARGETS = [
   { label: 'Concise', range: '40–60 words', prompt: 'concise, impactful' },
@@ -29,7 +33,8 @@ export function SummaryStep() {
     try {
       const { data } = await aiApi.improveSummary(
         resume.summary || `${role} with relevant experience seeking new opportunities.`,
-        role
+        role,
+        style === 0 ? 'concise' : style === 2 ? 'detailed' : 'standard',
       );
       setSummary(data.improved);
       toast.success('AI summary generated!');
@@ -43,27 +48,28 @@ export function SummaryStep() {
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+      <p className="text-sm leading-relaxed text-muted-foreground">
         A strong professional summary is the first thing recruiters read. Keep it to 2–4 sentences, skip "I", and include your key strength and target role.
       </p>
 
       {/* Style selector */}
       <div>
-        <label className="block text-sm font-medium mb-2">Target length</label>
+        <Label className="mb-2 block">Target length</Label>
         <div className="flex gap-2">
           {WORD_TARGETS.map((t, i) => (
-            <button
+            <Button
+              type="button"
+              variant="outline"
               key={t.label}
               onClick={() => setStyle(i)}
-              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-medium transition-all ${
-                style === i
-                  ? 'bg-[#00C896]/15 border-[#00C896]/40 text-[#00C896]'
-                  : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--border-strong)]'
-              }`}
+              className={cn(
+                'h-auto flex-1 flex-col gap-0.5 py-2 text-xs',
+                style === i && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15',
+              )}
             >
               <div>{t.label}</div>
               <div className="opacity-60 text-[10px]">{t.range}</div>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -71,26 +77,29 @@ export function SummaryStep() {
       {/* Textarea */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-sm font-medium">Summary</label>
-          <span className={`text-xs ${wordCount > 120 ? 'text-[var(--error)]' : 'text-[var(--text-muted)]'}`}>
+          <Label htmlFor="resume-summary">Summary</Label>
+          <span className={cn('text-xs text-muted-foreground', wordCount > 120 && 'text-destructive')}>
             {wordCount} words
           </span>
         </div>
         <TextareaAutosize
+          id="resume-summary"
           value={resume.summary}
           onChange={(e) => setSummary(e.target.value)}
           minRows={5}
           maxRows={10}
           placeholder="Results-driven Software Engineer with 5+ years building scalable web applications. Proven track record of reducing load times by 40% and shipping features used by 100K+ users. Passionate about clean code and developer experience."
-          className="w-full px-4 py-3 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 focus:border-[#00C896] text-sm resize-none transition-all placeholder:text-[var(--text-muted)] leading-relaxed"
+          className="flex min-h-32 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm leading-relaxed shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 
       {/* AI button */}
-      <button
+      <Button
+        type="button"
+        variant="outline"
         onClick={handleAIGenerate}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-[#6C63FF]/40 bg-[#6C63FF]/10 text-[#6C63FF] font-medium text-sm hover:bg-[#6C63FF]/15 transition-all disabled:opacity-60"
+        className="h-11 w-full border-violet-500/30 bg-violet-500/10 text-violet-600 hover:bg-violet-500/15 hover:text-violet-700 dark:text-violet-300"
       >
         {loading ? (
           <><Loader2 className="w-4 h-4 animate-spin" /> Generating with Groq / Gemini…</>
@@ -99,10 +108,11 @@ export function SummaryStep() {
         ) : (
           <><Sparkles className="w-4 h-4" /> Generate with AI (free)</>
         )}
-      </button>
+      </Button>
 
       {/* Tips */}
-      <div className="p-4 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)]">
+      <Card className="bg-muted/40 shadow-none">
+        <CardContent className="p-4">
         <p className="text-xs font-semibold mb-2 text-[var(--text-secondary)]">✅ ATS Tips</p>
         <ul className="space-y-1.5">
           {[
@@ -111,13 +121,14 @@ export function SummaryStep() {
             'Include your #1 quantifiable achievement',
             'Mention target job title for semantic matching',
           ].map((tip) => (
-            <li key={tip} className="flex items-start gap-2 text-xs text-[var(--text-muted)]">
-              <Check className="w-3 h-3 text-[#10B981] shrink-0 mt-0.5" />
+            <li key={tip} className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Check className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
               {tip}
             </li>
           ))}
         </ul>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

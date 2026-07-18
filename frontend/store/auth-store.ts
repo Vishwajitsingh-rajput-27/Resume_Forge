@@ -1,12 +1,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import api from '@/lib/api-client';
+import api, { registerAuthTokenSync } from '@/lib/api-client';
+import { useResumeStore } from '@/store/resume-store';
 
 export interface User {
   id: string;
+  _id?: string;
   name: string;
   email: string;
   avatar?: string;
+  phone?: string;
+  address?: string;
+  linkedin?: string;
+  github?: string;
+  portfolioUrl?: string;
   role: 'user' | 'admin';
   isEmailVerified: boolean;
   usage?: {
@@ -17,6 +24,17 @@ export interface User {
     downloadsCount: number;
   };
 }
+
+type AuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: User & { _id?: string };
+};
+
+const normalizeUser = (user: AuthResponse['user']): User => ({
+  ...user,
+  id: String(user.id || user._id),
+});
 
 interface AuthState {
   user: User | null;
@@ -29,10 +47,10 @@ interface AuthState {
   loginWithGoogle: (accessToken: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshAccessToken: () => Promise<boolean>;
   refreshUser: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   setTokens: (access: string, refresh: string) => void;
+  clearSession: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -49,12 +67,24 @@ export const useAuthStore = create<AuthState>()(
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       },
 
+      clearSession: () => {
+        delete api.defaults.headers.common['Authorization'];
+        useResumeStore.getState().resetResume();
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      },
+
       login: async (email, password) => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/login', { email, password });
+          const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
           get().setTokens(data.accessToken, data.refreshToken);
-          set({ user: data.user, isAuthenticated: true, isLoading: false });
+          set({ user: normalizeUser(data.user), isAuthenticated: true, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
           throw err;
@@ -64,9 +94,9 @@ export const useAuthStore = create<AuthState>()(
       loginWithGoogle: async (accessToken) => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/google', { accessToken });
+          const { data } = await api.post<AuthResponse>('/auth/google', { accessToken });
           get().setTokens(data.accessToken, data.refreshToken);
-          set({ user: data.user, isAuthenticated: true, isLoading: false });
+          set({ user: normalizeUser(data.user), isAuthenticated: true, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
           throw err;
@@ -76,9 +106,9 @@ export const useAuthStore = create<AuthState>()(
       register: async (name, email, password) => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/register', { name, email, password });
+          const { data } = await api.post<AuthResponse>('/auth/register', { name, email, password });
           get().setTokens(data.accessToken, data.refreshToken);
-          set({ user: data.user, isAuthenticated: true, isLoading: false });
+          set({ user: normalizeUser(data.user), isAuthenticated: true, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
           throw err;
@@ -87,8 +117,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try { await api.post('/auth/logout'); } catch {}
-        delete api.defaults.headers.common['Authorization'];
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        get().clearSession();
       },
 
       // Refresh the signed-in user's latest account details.
@@ -96,31 +125,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await api.get('/auth/me');
           if (data.user) {
-            set({ user: data.user, isAuthenticated: true });
+            set({ user: normalizeUser(data.user), isAuthenticated: true });
           }
-        } catch (err) {
-          // Token expired — try refresh
-          const refreshed = await get().refreshAccessToken();
-          if (refreshed) {
-            try {
-              const { data } = await api.get('/auth/me');
-              if (data.user) set({ user: data.user, isAuthenticated: true });
-            } catch {}
-          }
-        }
-      },
-
-      refreshAccessToken: async () => {
-        const { refreshToken } = get();
-        if (!refreshToken) return false;
-        try {
-          const { data } = await api.post('/auth/refresh', { refreshToken });
-          set({ accessToken: data.accessToken });
-          api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
-          return true;
         } catch {
-          set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
-          return false;
+          // Token expired — try refresh
+          // The API interceptor owns token refresh and session clearing.
+          // Transient server/network failures should not sign the user out.
         }
       },
 
@@ -141,3 +151,12 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+registerAuthTokenSync(({ accessToken, refreshToken }) => {
+  if (accessToken && refreshToken) {
+    useAuthStore.setState({ accessToken, refreshToken });
+    return;
+  }
+
+  useAuthStore.getState().clearSession();
+});

@@ -1,25 +1,39 @@
 'use client';
+
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname, useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  LayoutDashboard, FileText, Sparkles, Target, Mail,
-  Mic, Globe, Settings, LogOut, Zap, ChevronRight,
-  BarChart3, X,
+  BarChart3,
+  ChevronRight,
+  FileText,
+  Globe,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Mic,
+  Settings,
+  Sparkles,
+  Target,
+  X,
 } from 'lucide-react';
-import { useAuthStore } from '@/store/auth-store';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/auth-store';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/resume/builder',   icon: FileText,         label: 'Resume Builder' },
-  { href: '/resume/templates', icon: Sparkles,         label: 'Templates' },
-  { href: '/ats',              icon: Target,           label: 'ATS Analyzer' },
-  { href: '/cover-letter',     icon: Mail,             label: 'Cover Letters' },
-  { href: '/interview-prep',   icon: Mic,              label: 'Interview Prep' },
-  { href: '/job-match',        icon: BarChart3,        label: 'Job Matcher' },
-  { href: '/portfolio',        icon: Globe,            label: 'Portfolio Sites' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/resume/builder?new=1', icon: FileText, label: 'Resume builder' },
+  { href: '/resume/templates', icon: Sparkles, label: 'Templates' },
+  { href: '/ats', icon: Target, label: 'ATS analyzer' },
+  { href: '/cover-letter', icon: Mail, label: 'Cover letters' },
+  { href: '/interview-prep', icon: Mic, label: 'Interview prep' },
+  { href: '/job-match', icon: BarChart3, label: 'Job matcher' },
+  { href: '/portfolio', icon: Globe, label: 'Portfolio sites' },
 ];
 
 interface SidebarProps {
@@ -27,101 +41,129 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+function Brand() {
+  return (
+    <Link
+      href="/dashboard"
+      className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+        <FileText className="h-4 w-4" />
+      </span>
+      <span className="font-display text-lg font-bold tracking-tight">
+        ResumeForge
+      </span>
+    </Link>
+  );
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
   const router = useRouter();
+  const { user, logout } = useAuthStore();
 
   const handleLogout = async () => {
     await logout();
-    toast.success('Logged out');
-    router.push('/');
+    toast.success('You are signed out.');
+    router.replace('/');
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="flex items-center justify-between px-5 py-5 border-b border-[var(--border-default)]">
-        <Link href="/dashboard" className="flex items-center gap-2.5 font-display font-bold text-lg">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center shadow-md shadow-[#00C896]/20">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-gradient">ResumeForge</span>
-        </Link>
+  const content = (
+    <div className="flex h-full flex-col bg-card">
+      <div className="flex h-16 items-center justify-between px-4">
+        <Brand />
         {onClose && (
-          <button onClick={onClose} className="lg:hidden text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-            <X className="w-5 h-5" />
-          </button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="lg:hidden"
+            aria-label="Close navigation"
+          >
+            <X />
+          </Button>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <Separator />
+
+      <nav aria-label="Workspace navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Workspace
+        </p>
         {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + '/');
+          const activePath = item.href.split('?')[0];
+          const active =
+            pathname === activePath || pathname.startsWith(`${activePath}/`);
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative ${
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 active
-                  ? 'bg-[#00C896]/15 text-[#00C896]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {active && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute inset-0 bg-[#00C896]/12 rounded-xl"
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
-                />
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               )}
-              <item.icon className={`w-4 h-4 shrink-0 relative z-10 ${active ? 'text-[#00C896]' : ''}`} />
-              <span className="relative z-10 flex-1">{item.label}</span>
-              {active && <ChevronRight className="w-3.5 h-3.5 relative z-10 text-[#00C896]" />}
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{item.label}</span>
+              {active && <ChevronRight className="h-3.5 w-3.5" />}
             </Link>
           );
         })}
       </nav>
 
-      <div className="mx-3 mb-3 rounded-xl border border-[#00C896]/20 bg-gradient-to-br from-[#00C896]/12 to-[#6C63FF]/10 p-4">
-        <div className="mb-1.5 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[#00C896]" />
-          <span className="text-xs font-bold text-[var(--text-primary)]">Free &amp; open</span>
+      <div className="px-3 pb-3">
+        <div className="rounded-xl border border-primary/15 bg-primary/5 p-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Everything included</span>
+            </div>
+            <Badge variant="secondary" className="text-[10px]">
+              Free
+            </Badge>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            Seven templates, AI tools, ATS checks, and exports.
+          </p>
         </div>
-        <p className="text-xs leading-relaxed text-[var(--text-muted)]">
-          Every tool and template is included.
-        </p>
       </div>
 
-      {/* User + settings */}
-      <div className="border-t border-[var(--border-default)] p-3 space-y-0.5">
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition-all"
-        >
-          <Settings className="w-4 h-4" />
-          Settings
-        </Link>
-        <button
+      <Separator />
+
+      <div className="space-y-1 p-3">
+        <Button asChild variant="ghost" className="w-full justify-start text-muted-foreground">
+          <Link href="/settings" onClick={onClose}>
+            <Settings />
+            Settings
+          </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-secondary)] hover:bg-[var(--error)]/10 hover:text-[var(--error)] transition-all"
+          className="w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut />
           Log out
-        </button>
-        <div className="flex items-center gap-3 px-3 py-3 mt-1 rounded-xl bg-[var(--bg-subtle)]">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center text-white text-sm font-bold shrink-0">
-            {user?.name?.[0]?.toUpperCase() || '?'}
+        </Button>
+
+        <div className="mt-2 flex items-center gap-3 rounded-xl border bg-muted/40 p-3">
+          <Avatar className="h-9 w-9 border">
+            {user?.avatar && <AvatarImage src={user.avatar} alt="" />}
+            <AvatarFallback>
+              {user?.name?.[0]?.toUpperCase() || 'R'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{user?.name || 'ResumeForge user'}</p>
+            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{user?.name}</div>
-            <div className="text-xs text-[var(--text-muted)] truncate">{user?.email}</div>
-          </div>
-          <span className="shrink-0 rounded-full bg-[#00C896]/15 px-2 py-0.5 text-[10px] font-bold text-[#00C896]">
-            OPEN
-          </span>
         </div>
       </div>
     </div>
@@ -129,30 +171,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-[var(--border-default)] bg-[var(--bg-elevated)] h-screen sticky top-0">
-        <SidebarContent />
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r bg-card lg:block">
+        {content}
       </aside>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {isOpen && (
           <>
-            <motion.div
+            <motion.button
+              type="button"
+              aria-label="Close navigation"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             />
             <motion.aside
-              initial={{ x: -280 }}
+              initial={{ x: -288 }}
               animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-              className="fixed left-0 top-0 bottom-0 w-72 bg-[var(--bg-elevated)] border-r border-[var(--border-default)] z-50 flex flex-col lg:hidden overflow-y-auto"
+              exit={{ x: -288 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
+              className="fixed inset-y-0 left-0 z-50 w-72 border-r bg-card shadow-2xl lg:hidden"
             >
-              <SidebarContent />
+              {content}
             </motion.aside>
           </>
         )}

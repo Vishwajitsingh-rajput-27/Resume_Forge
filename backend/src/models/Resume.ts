@@ -110,12 +110,12 @@ const resumeSchema = new Schema<IResume>(
 
     education: [
       {
-        institution: { type: String, required: true },
-        degree: { type: String, required: true },
+        institution: { type: String, default: '' },
+        degree: { type: String, default: '' },
         specialization: String,
         cgpa: { type: Number, min: 0, max: 10 },
         percentage: { type: Number, min: 0, max: 100 },
-        startYear: { type: Number, required: true },
+        startYear: Number,
         endYear: Number,
         current: { type: Boolean, default: false },
       },
@@ -123,10 +123,10 @@ const resumeSchema = new Schema<IResume>(
 
     experience: [
       {
-        company: { type: String, required: true },
-        role: { type: String, required: true },
+        company: { type: String, default: '' },
+        role: { type: String, default: '' },
         location: String,
-        startDate: { type: Date, required: true },
+        startDate: Date,
         endDate: Date,
         current: { type: Boolean, default: false },
         responsibilities: [String],
@@ -136,8 +136,8 @@ const resumeSchema = new Schema<IResume>(
 
     projects: [
       {
-        name: { type: String, required: true },
-        description: { type: String, required: true },
+        name: { type: String, default: '' },
+        description: { type: String, default: '' },
         technologies: [String],
         githubUrl: String,
         liveUrl: String,
@@ -147,15 +147,15 @@ const resumeSchema = new Schema<IResume>(
 
     skills: [
       {
-        category: { type: String, required: true },
+        category: { type: String, default: '' },
         skills: [String],
       },
     ],
 
     certifications: [
       {
-        name: { type: String, required: true },
-        issuer: { type: String, required: true },
+        name: { type: String, default: '' },
+        issuer: { type: String, default: '' },
         issueDate: Date,
         expiryDate: Date,
         credentialId: String,
@@ -166,7 +166,7 @@ const resumeSchema = new Schema<IResume>(
     achievements: [String],
     languages: [
       {
-        language: { type: String, required: true },
+        language: { type: String, default: '' },
         proficiency: {
           type: String,
           enum: ['basic', 'conversational', 'professional', 'native'],
@@ -190,7 +190,6 @@ const resumeSchema = new Schema<IResume>(
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 resumeSchema.index({ userId: 1, status: 1 });
 resumeSchema.index({ userId: 1, createdAt: -1 });
-resumeSchema.index({ slug: 1 });
 resumeSchema.index({ isPublic: 1 });
 
 const Resume: Model<IResume> = mongoose.model<IResume>('Resume', resumeSchema);

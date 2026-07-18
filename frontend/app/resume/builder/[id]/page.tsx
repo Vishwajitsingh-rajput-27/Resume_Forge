@@ -6,22 +6,37 @@ import { toast } from 'sonner';
 import { resumeApi } from '@/lib/api-client';
 import { useResumeStore } from '@/store/resume-store';
 import ResumeBuilderPage from '../page';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EditResumePage() {
   const params   = useParams();
   const router   = useRouter();
-  const { loadResume, setResumeId } = useResumeStore();
+  const { loadResume, resetResume } = useResumeStore();
   const [loading, setLoading] = useState(true);
+  const rawRouteId = params?.id;
+  const routeId = Array.isArray(rawRouteId) ? rawRouteId[0] : rawRouteId;
 
   useEffect(() => {
-    const id = params.id as string;
-    if (!id) { router.replace('/resume/builder'); return; }
+    let active = true;
+    setLoading(true);
+    resetResume();
 
-    resumeApi.getById(id)
+    if (!routeId) {
+      router.replace('/resume/builder');
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    resumeApi.getById(routeId)
       .then(({ data }) => {
+        if (!active) return;
         // Map MongoDB document → store shape
         loadResume({
           id: data._id,
+          status: data.status === 'complete' ? 'complete' : 'draft',
           title: data.title,
           templateId: data.templateId || 'modern',
           colorTheme: data.colorTheme || '#00C896',
@@ -37,22 +52,33 @@ export default function EditResumePage() {
           languages: (data.languages || []).map((l: Record<string,unknown>, i: number) => ({ ...l, id: (l._id as string) || String(i) })),
           interests: data.interests || [],
         });
-        setResumeId(data._id);
       })
       .catch(() => {
+        if (!active) return;
         toast.error('Failed to load resume.');
         router.replace('/resume/builder');
       })
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loadResume, resetResume, routeId, router]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#00C896]" />
-        <span className="ml-3 text-[var(--text-muted)]">Loading resume…</span>
-      </div>
+      <Card className="mx-auto max-w-3xl">
+        <CardContent className="space-y-6 p-6">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium">Loading resume…</span>
+          </div>
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
     );
   }
 

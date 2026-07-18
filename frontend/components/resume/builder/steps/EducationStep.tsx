@@ -3,6 +3,10 @@ import { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import { useResumeStore, Education } from '@/store/resume-store';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const empty = (): Education => ({
   id: uuid(), institution: '', degree: '', specialization: '',
@@ -16,22 +20,26 @@ export function EducationStep() {
   return (
     <div className="space-y-4">
       {resume.education.map((edu, i) => (
-        <div key={edu.id} className="border border-[var(--border-default)] rounded-xl overflow-hidden">
+        <Card key={edu.id} className="overflow-hidden shadow-none">
           <div
-            className="flex items-center gap-3 px-4 py-3 bg-[var(--bg-subtle)] cursor-pointer"
+            className="flex cursor-pointer items-center gap-3 bg-muted/50 px-4 py-3"
             onClick={() => setExpanded(expanded === edu.id ? null : edu.id)}
           >
             <GripVertical className="w-4 h-4 text-[var(--text-muted)]" />
             <div className="flex-1 min-w-0">
               <div className="font-medium text-sm truncate">{edu.degree || `Education ${i + 1}`}</div>
-              <div className="text-xs text-[var(--text-muted)] truncate">{edu.institution}</div>
+              <div className="truncate text-xs text-muted-foreground">{edu.institution}</div>
             </div>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={(e) => { e.stopPropagation(); removeEducation(edu.id); }}
-              className="p-1.5 rounded-lg hover:bg-red-500/15 hover:text-red-400 text-[var(--text-muted)]"
+              className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              aria-label="Remove education"
             >
               <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </Button>
             {expanded === edu.id
               ? <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
               : <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
@@ -50,26 +58,28 @@ export function EducationStep() {
                 ['endYear',     'End Year',        '2023'],
               ] as [string, string, string][]).map(([k, l, p]) => (
                 <div key={k} className={k === 'institution' || k === 'degree' ? 'col-span-2' : ''}>
-                  <label className="block text-xs font-medium mb-1">{l}</label>
-                  <input
+                  <Label htmlFor={`education-${edu.id}-${k}`} className="mb-1 block text-xs">{l}</Label>
+                  <Input
+                    id={`education-${edu.id}-${k}`}
                     value={(edu as unknown as Record<string, string>)[k] ?? ''}
                     onChange={(e) => updateEducation(edu.id, { [k]: e.target.value })}
                     placeholder={p}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-1 focus:ring-[#00C896]/40"
                   />
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       ))}
 
-      <button
+      <Button
+        type="button"
+        variant="outline"
         onClick={() => { const e = empty(); addEducation(e); setExpanded(e.id); }}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border-default)] text-[var(--text-muted)] hover:border-[#00C896]/40 hover:text-[#00C896] text-sm flex items-center justify-center gap-2 transition-all"
+        className="h-12 w-full border-dashed text-muted-foreground hover:border-primary/40 hover:text-primary"
       >
         <Plus className="w-4 h-4" /> Add Education
-      </button>
+      </Button>
     </div>
   );
 }

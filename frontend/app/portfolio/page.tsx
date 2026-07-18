@@ -1,13 +1,41 @@
 'use client';
+
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Globe, Plus, ExternalLink, Copy, Loader2, Sparkles,
-  Check, Trash2, RefreshCw, Eye, EyeOff,
+  Check,
+  Copy,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Globe,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import api, { portfolioApi } from '@/lib/api-client';
 
 interface Portfolio {
@@ -19,8 +47,15 @@ interface Portfolio {
   updatedAt: string;
 }
 
-function PortfolioCard({ portfolio, onTogglePublic, onDelete }:
-  { portfolio: Portfolio; onTogglePublic: (id: string, pub: boolean) => void; onDelete: (id: string) => void }) {
+function PortfolioCard({
+  portfolio,
+  onTogglePublic,
+  onDelete,
+}: {
+  portfolio: Portfolio;
+  onTogglePublic: (id: string, isPublic: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/portfolio/${portfolio.slug}`;
 
@@ -36,84 +71,115 @@ function PortfolioCard({ portfolio, onTogglePublic, onDelete }:
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5 hover:border-[var(--border-strong)] transition-all group"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00C896]/20 to-[#6C63FF]/20 flex items-center justify-center">
-          <Globe className="w-5 h-5 text-[#00C896]" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => onTogglePublic(portfolio._id, !portfolio.isPublic)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-              portfolio.isPublic
-                ? 'bg-[#10B981]/15 text-[#10B981]'
-                : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
-            }`}
-          >
-            {portfolio.isPublic ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            {portfolio.isPublic ? 'Live' : 'Hidden'}
-          </button>
-          <button onClick={() => onDelete(portfolio._id)}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      <Card className="group h-full transition-colors hover:border-primary/30">
+        <CardHeader className="pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
+              <Globe className="size-5 text-primary" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={portfolio.isPublic ? 'secondary' : 'outline'}
+                onClick={() => onTogglePublic(portfolio._id, !portfolio.isPublic)}
+                className="h-8 rounded-full px-3 text-xs"
+              >
+                {portfolio.isPublic ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                {portfolio.isPublic ? 'Live' : 'Hidden'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(portfolio._id)}
+                className="size-8 text-muted-foreground hover:text-destructive"
+                aria-label={`Unpublish ${portfolio.personalInfo?.name}'s portfolio`}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+          <div>
+            <CardTitle className="truncate text-base">{portfolio.personalInfo?.name}</CardTitle>
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {portfolio.personalInfo?.jobTitle}
+            </p>
+          </div>
+        </CardHeader>
 
-      <h3 className="font-semibold text-sm mb-0.5 truncate">{portfolio.personalInfo?.name}</h3>
-      <p className="text-xs text-[var(--text-muted)] mb-4 truncate">{portfolio.personalInfo?.jobTitle}</p>
+        <CardContent>
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-2.5">
+            <span className="flex-1 truncate font-mono text-xs text-muted-foreground">
+              /portfolio/{portfolio.slug}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={copy}
+              className="size-7 shrink-0"
+              aria-label="Copy portfolio URL"
+            >
+              {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+            </Button>
+          </div>
 
-      {/* URL row */}
-      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)]">
-        <span className="text-xs text-[var(--text-muted)] truncate flex-1 font-mono">
-          /portfolio/{portfolio.slug}
-        </span>
-        <button onClick={copy} className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-          {copied ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
-      </div>
+          <Separator className="my-4" />
 
-      <div className="flex gap-2 mt-3">
-        <Link href={`/portfolio/${portfolio.slug}`} target="_blank"
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#00C896]/15 text-[#00C896] text-xs font-medium hover:bg-[#00C896]/25 transition-colors">
-          <ExternalLink className="w-3.5 h-3.5" /> View Live
-        </Link>
-        <Link href={`/resume/builder/${portfolio._id}`}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:border-[var(--border-strong)] transition-colors">
-          <RefreshCw className="w-3.5 h-3.5" /> Update
-        </Link>
-      </div>
+          <div className="flex gap-2">
+            <Button asChild size="sm" className="flex-1">
+              <Link href={`/portfolio/${portfolio.slug}`} target="_blank">
+                <ExternalLink className="size-3.5" /> View live
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="flex-1">
+              <Link href={`/resume/builder/${portfolio._id}`}>
+                <RefreshCw className="size-3.5" /> Update
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }
 
 export default function PortfolioPage() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const { data: resumes = [] } = useQuery({
     queryKey: ['resumes'],
-    queryFn: () => api.get('/resumes').then((r) => r.data),
+    queryFn: () => api.get('/resumes').then((response) => response.data),
   });
 
-  // For demo, portfolios are resumes with isPublic=true
-  const portfolios: Portfolio[] = (resumes as Portfolio[]).filter((r) => r.isPublic);
+  const portfolios: Portfolio[] = (resumes as Portfolio[]).filter((resume) => resume.isPublic);
 
   const generate = async () => {
-    if (!selectedResumeId) { toast.error('Select a resume first'); return; }
+    if (!selectedResumeId) {
+      toast.error('Select a resume first');
+      return;
+    }
+
     setGenerating(true);
     try {
       const { data } = await portfolioApi.generate(selectedResumeId);
       toast.success('Portfolio published! 🎉', {
         description: `Live at: /portfolio/${data.slug}`,
-        action: { label: 'View', onClick: () => window.open(`/portfolio/${data.slug}`, '_blank') },
+        action: {
+          label: 'View',
+          onClick: () => window.open(`/portfolio/${data.slug}`, '_blank'),
+        },
       });
-      qc.invalidateQueries({ queryKey: ['resumes'] });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      toast.error(msg || 'Failed to generate portfolio.');
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { error?: string } } })
+        .response?.data?.error;
+      toast.error(message || 'Failed to generate portfolio.');
     } finally {
       setGenerating(false);
     }
@@ -122,108 +188,135 @@ export default function PortfolioPage() {
   const togglePublic = async (id: string, isPublic: boolean) => {
     try {
       await api.put(`/resumes/${id}`, { isPublic });
-      qc.invalidateQueries({ queryKey: ['resumes'] });
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
       toast.success(isPublic ? 'Portfolio is now live!' : 'Portfolio hidden');
-    } catch { toast.error('Update failed'); }
+    } catch {
+      toast.error('Update failed');
+    }
   };
 
   const deletePortfolio = async (id: string) => {
-    if (!confirm('Unpublish this portfolio?')) return;
     await togglePublic(id, false);
+    setPendingDeleteId(null);
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display font-extrabold text-3xl">Portfolio Sites</h1>
-          <p className="text-[var(--text-secondary)] mt-1 text-sm">
-            Convert your resume into a public portfolio website in one click.
-          </p>
-        </div>
+    <div className="mx-auto max-w-4xl space-y-8">
+      <div>
+        <h1 className="font-display text-3xl font-extrabold">Portfolio Sites</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Convert your resume into a public portfolio website in one click.
+        </p>
       </div>
 
-      {/* Generate card */}
-      <div className="bg-gradient-to-br from-[#00C896]/10 to-[#6C63FF]/10 border border-[#00C896]/20 rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center shadow-lg shadow-[#00C896]/20">
-            <Sparkles className="w-5 h-5 text-white" />
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/10 via-card to-violet-500/10">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <Sparkles className="size-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Generate new portfolio</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Creates a public URL like{' '}
+                <code className="font-mono text-primary">your-domain.com/portfolio/your-name</code>
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-semibold">Generate New Portfolio</h2>
-            <p className="text-xs text-[var(--text-muted)]">
-              Creates a public URL like <code className="font-mono text-[#00C896]">your-domain.com/portfolio/your-name</code>
-            </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+              <SelectTrigger className="flex-1 bg-background">
+                <SelectValue placeholder="Select a resume to publish…" />
+              </SelectTrigger>
+              <SelectContent>
+                {(resumes as { _id: string; title: string }[]).map((resume) => (
+                  <SelectItem key={resume._id} value={resume._id}>{resume.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              onClick={generate}
+              disabled={generating || !selectedResumeId}
+              className="shrink-0"
+            >
+              {generating
+                ? <><Loader2 className="size-4 animate-spin" /> Publishing…</>
+                : <><Globe className="size-4" /> Publish</>}
+            </Button>
           </div>
-        </div>
 
-        <div className="flex gap-3">
-          <select
-            value={selectedResumeId}
-            onChange={(e) => setSelectedResumeId(e.target.value)}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 focus:border-[#00C896]"
-          >
-            <option value="">Select a resume to publish…</option>
-            {(resumes as { _id: string; title: string }[]).map((r) => (
-              <option key={r._id} value={r._id}>{r.title}</option>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              'Instant deployment',
+              'Mobile responsive',
+              'Dark mode included',
+              'SEO optimized',
+            ].map((feature) => (
+              <Badge key={feature} variant="secondary">{feature}</Badge>
             ))}
-          </select>
+          </div>
+        </CardContent>
+      </Card>
 
-          <button
-            onClick={generate}
-            disabled={generating || !selectedResumeId}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-[#00C896]/20 shrink-0"
-          >
-            {generating
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Publishing…</>
-              : <><Globe className="w-4 h-4" /> Publish</>
-            }
-          </button>
-        </div>
-
-        <ul className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            '⚡ Instant deployment',
-            '📱 Mobile responsive',
-            '🌙 Dark mode included',
-            '🔍 SEO optimized',
-          ].map((f) => (
-            <li key={f} className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-              {f}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Portfolio list */}
       {portfolios.length === 0 ? (
-        <div className="text-center py-16 text-[var(--text-muted)]">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-default)] flex items-center justify-center mx-auto mb-4">
-            <Globe className="w-8 h-8" />
-          </div>
-          <p className="text-sm font-medium mb-1">No portfolios published yet</p>
-          <p className="text-xs">Select a resume above and click Publish to create your first portfolio.</p>
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center py-16 text-center text-muted-foreground">
+            <div className="mb-4 flex size-16 items-center justify-center rounded-xl bg-muted">
+              <Globe className="size-8" />
+            </div>
+            <p className="mb-1 text-sm font-medium text-foreground">No portfolios published yet</p>
+            <p className="text-xs">Select a resume above and click Publish to create your first portfolio.</p>
+          </CardContent>
+        </Card>
       ) : (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Your Portfolios ({portfolios.length})</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section>
+          <h2 className="mb-4 font-semibold">Your portfolios ({portfolios.length})</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <AnimatePresence>
-              {portfolios.map((p) => (
+              {portfolios.map((portfolio) => (
                 <PortfolioCard
-                  key={p._id}
-                  portfolio={p}
+                  key={portfolio._id}
+                  portfolio={portfolio}
                   onTogglePublic={togglePublic}
-                  onDelete={deletePortfolio}
+                  onDelete={setPendingDeleteId}
                 />
               ))}
             </AnimatePresence>
           </div>
-        </div>
+        </section>
       )}
+
+      <Dialog
+        open={Boolean(pendingDeleteId)}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unpublish this portfolio?</DialogTitle>
+            <DialogDescription>
+              Its public URL will stop working immediately. Your resume remains saved and can be published again later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPendingDeleteId(null)}>
+              Keep published
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => pendingDeleteId && void deletePortfolio(pendingDeleteId)}
+            >
+              <Trash2 />
+              Unpublish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

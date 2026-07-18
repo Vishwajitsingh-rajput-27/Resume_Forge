@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -6,8 +7,7 @@ import compression from 'compression';
 import mongoSanitize from 'express-mongo-sanitize';
 import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
-import dotenv from 'dotenv';
-import path from 'path';
+import mongoose from 'mongoose';
 import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
 
@@ -23,10 +23,12 @@ import adminRoutes from './routes/admin';
 import jobMatchRoutes from './routes/job-match';
 import exportRoutes from './routes/export';
 
-dotenv.config();
-
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
+
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet({
@@ -111,11 +113,29 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', (_req: Request, res: Response) => {
+  const aiProvider = process.env.AI_PROVIDER || 'GROQ';
+  const aiConfigured = aiProvider === 'GEMINI'
+    ? Boolean(process.env.GEMINI_API_KEY?.trim())
+    : aiProvider === 'GROQ_FALLBACK'
+      ? Boolean(process.env.GROQ_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim())
+      : Boolean(process.env.GROQ_API_KEY?.trim());
+
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
+    checks: {
+      database: mongoose.connection.readyState === 1,
+      ai: aiConfigured,
+      googleAuth: Boolean(process.env.GOOGLE_CLIENT_ID?.trim()),
+      passwordResetEmail: Boolean(
+        process.env.EMAIL_HOST?.trim()
+        && process.env.EMAIL_USER?.trim()
+        && process.env.EMAIL_PASS
+        && process.env.FRONTEND_URL?.trim(),
+      ),
+    },
   });
 });
 
@@ -170,6 +190,8 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
 
 export default app;

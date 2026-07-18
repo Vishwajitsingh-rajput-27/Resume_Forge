@@ -44,6 +44,10 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
         brand: {
           primary:   '#00C896',
           secondary: '#F7B731',
@@ -68,6 +72,9 @@ const config: Config = {
         shimmer:     { to: { backgroundPosition: '-200% 0' } },
       },
       borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
         '2xl': '16px',
         '3xl': '24px',
       },

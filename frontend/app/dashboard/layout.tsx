@@ -1,57 +1,112 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Menu, Bell, Search } from 'lucide-react';
+
+import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { Menu, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/store/auth-store';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, refreshUser } = useAuthStore();
+const routeLabels: Array<[string, string]> = [
+  ['/resume/templates', 'Templates'],
+  ['/resume/builder', 'Resume builder'],
+  ['/interview-prep', 'Interview prep'],
+  ['/cover-letter', 'Cover letters'],
+  ['/job-match', 'Job matcher'],
+  ['/portfolio', 'Portfolio sites'],
+  ['/settings', 'Settings'],
+  ['/admin', 'Admin'],
+  ['/ats', 'ATS analyzer'],
+  ['/dashboard', 'Dashboard'],
+];
 
-  // Keep account details in sync when the dashboard opens.
-  useEffect(() => {
-    refreshUser();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+function currentLabel(pathname: string) {
+  return (
+    routeLabels.find(([route]) => pathname.startsWith(route))?.[1] ||
+    'Workspace'
+  );
+}
+
+function WorkspaceShell({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => setMounted(true), []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
+    <div className="flex min-h-screen bg-muted/30">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-[var(--border-default)] bg-[var(--bg-elevated)] shrink-0">
-          <div className="flex items-center gap-3">
-            <button
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
+              className="lg:hidden"
+              aria-label="Open navigation"
             >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] w-56">
-              <Search className="w-4 h-4 text-[var(--text-muted)]" />
-              <span className="text-sm text-[var(--text-muted)]">Search…</span>
+              <Menu />
+            </Button>
+            <Separator orientation="vertical" className="h-6 lg:hidden" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">
+                {currentLabel(pathname)}
+              </p>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                Build, tailor, and export without limits.
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden rounded-full border border-[#00C896]/20 bg-[#00C896]/10 px-2.5 py-1 text-[10px] font-bold text-[#00C896] sm:inline">
-              FREE &amp; OPEN
-            </span>
-
-            <button className="p-2 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-secondary)] relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#00C896]" />
-            </button>
-
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center text-white text-sm font-bold">
-              {user?.name?.[0]?.toUpperCase() || '?'}
-            </div>
+            <Badge variant="outline" className="hidden border-primary/25 bg-primary/5 text-primary sm:inline-flex">
+              Free workspace
+            </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label="Toggle colour theme"
+            >
+              {mounted && theme === 'dark' ? <Sun /> : <Moon />}
+            </Button>
+            <Avatar className="h-9 w-9 border">
+              {user?.avatar && <AvatarImage src={user.avatar} alt="" />}
+              <AvatarFallback>
+                {user?.name?.[0]?.toUpperCase() || 'R'}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">
+          {children}
+        </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthGuard>
+      <WorkspaceShell>{children}</WorkspaceShell>
+    </AuthGuard>
   );
 }

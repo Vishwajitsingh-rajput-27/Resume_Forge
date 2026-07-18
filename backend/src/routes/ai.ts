@@ -33,12 +33,17 @@ router.post(
   [
     body('summary').trim().notEmpty().withMessage('Summary is required').isLength({ max: 1000 }),
     body('role').trim().notEmpty().withMessage('Role is required').isLength({ max: 100 }),
+    body('style').optional().isIn(['concise', 'standard', 'detailed']),
   ],
   async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     try {
-      const improved = await AIService.improveSummary(req.body.summary, req.body.role);
+      const improved = await AIService.improveSummary(
+        req.body.summary,
+        req.body.role,
+        req.body.style || 'standard',
+      );
       res.json({ improved });
     } catch (err) { handleAIError(err, res); }
   }
@@ -82,13 +87,16 @@ router.post(
   trackUsage('aiGenerations'),
   [
     body('description').trim().notEmpty().isLength({ max: 1000 }),
-    body('tech').trim().notEmpty().isLength({ max: 300 }),
+    body('tech').optional({ values: 'falsy' }).trim().isLength({ max: 300 }),
   ],
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     try {
-      const improved = await AIService.improveProjectDescription(req.body.description, req.body.tech);
+      const improved = await AIService.improveProjectDescription(
+        req.body.description,
+        req.body.tech || 'Not specified',
+      );
       res.json({ improved });
     } catch (err) { handleAIError(err, res); }
   }
@@ -100,9 +108,9 @@ router.post(
   '/cover-letter',
   trackUsage('coverLettersCreated'),
   [
-    body('name').trim().notEmpty().withMessage('Name is required'),
-    body('role').trim().notEmpty().withMessage('Job role is required'),
-    body('company').trim().notEmpty().withMessage('Company name is required'),
+    body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }),
+    body('role').trim().notEmpty().withMessage('Job role is required').isLength({ max: 100 }),
+    body('company').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
     body('jobDescription').trim().notEmpty().withMessage('Job description is required').isLength({ max: 3000 }),
     // skills and experienceSummary are OPTIONAL — user may not have filled them in yet
     body('skills').optional().isArray(),
@@ -132,8 +140,9 @@ router.post(
   '/interview-questions',
   trackUsage('aiGenerations'),
   [
-    body('role').trim().notEmpty(),
-    body('skills').optional().isArray(),
+    body('role').trim().notEmpty().isLength({ max: 100 }),
+    body('skills').optional().isArray({ max: 50 }),
+    body('skills.*').optional().isString().trim().isLength({ max: 100 }),
     body('level').trim().notEmpty()
       .isIn(['junior', 'mid', 'senior', 'lead', 'intern'])
       .withMessage('level must be: junior | mid | senior | lead | intern'),

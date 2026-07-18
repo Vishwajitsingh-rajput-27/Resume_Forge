@@ -14,6 +14,6 @@ module.exports = {
   coverageThreshold: {
     global: { branches: 70, functions: 75, lines: 75, statements: 75 },
   },
-  setupFilesAfterFramework: [],
+  setupFilesAfterEnv: [],
   testTimeout: 30000,
 };

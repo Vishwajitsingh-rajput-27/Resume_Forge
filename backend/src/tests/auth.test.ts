@@ -3,21 +3,29 @@ import mongoose from 'mongoose';
 import app from '../index';
 import User from '../models/User';
 
+const hasMongo = Boolean(process.env.MONGODB_URI);
+const describeWithMongo = hasMongo ? describe : describe.skip;
+
 beforeAll(async () => {
-  if (!process.env.MONGODB_URI) process.env.MONGODB_URI = 'mongodb://localhost:27017/resumeai_test';
-  await mongoose.connect(process.env.MONGODB_URI);
+  if (hasMongo) {
+    await mongoose.connect(process.env.MONGODB_URI!);
+  }
 });
 
 afterAll(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
+  if (hasMongo && mongoose.connection.readyState !== 0) {
+    await mongoose.connection.dropDatabase();
+    await mongoose.connection.close();
+  }
 });
 
 afterEach(async () => {
-  await User.deleteMany({});
+  if (hasMongo) {
+    await User.deleteMany({});
+  }
 });
 
-describe('POST /api/auth/register', () => {
+describeWithMongo('POST /api/auth/register', () => {
   it('creates a new user and returns tokens', async () => {
     const res = await request(app)
       .post('/api/auth/register')
@@ -48,7 +56,7 @@ describe('POST /api/auth/register', () => {
   });
 });
 
-describe('POST /api/auth/login', () => {
+describeWithMongo('POST /api/auth/login', () => {
   beforeEach(async () => {
     await request(app).post('/api/auth/register')
       .send({ name: 'Login Test', email: 'login@example.com', password: 'Password123' });
@@ -77,7 +85,7 @@ describe('POST /api/auth/login', () => {
   });
 });
 
-describe('GET /api/auth/me', () => {
+describeWithMongo('GET /api/auth/me', () => {
   it('returns user for valid token', async () => {
     const { body: { accessToken } } = await request(app)
       .post('/api/auth/register')
@@ -97,7 +105,7 @@ describe('GET /api/auth/me', () => {
   });
 });
 
-describe('POST /api/auth/refresh', () => {
+describeWithMongo('POST /api/auth/refresh', () => {
   it('returns new access token for valid refresh token', async () => {
     const { body: { refreshToken } } = await request(app)
       .post('/api/auth/register')

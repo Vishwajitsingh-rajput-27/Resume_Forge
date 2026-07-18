@@ -1,10 +1,34 @@
 'use client';
+
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Target, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Info, Zap, Loader2, ArrowRight } from 'lucide-react';
-import { toast } from 'sonner';
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Loader2,
+  Target,
+  Zap,
+} from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import api from '@/lib/api-client';
 
 interface ATSSection {
@@ -27,26 +51,39 @@ interface ATSReport {
 }
 
 const gradeColor: Record<string, string> = {
-  A: '#10B981', B: '#00C896', C: '#F59E0B', D: '#F97316', F: '#EF4444',
+  A: '#10B981',
+  B: '#00C896',
+  C: '#F59E0B',
+  D: '#F97316',
+  F: '#EF4444',
 };
 
 function ScoreRing({ score, size = 96, grade }: { score: number; size?: number; grade: string }) {
-  const r = (size / 2) - 8;
-  const circumference = 2 * Math.PI * r;
+  const radius = size / 2 - 8;
+  const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const color = gradeColor[grade] || '#00C896';
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--bg-muted)" strokeWidth="6" />
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="6"
-          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
-          className="transition-all duration-1000 ease-out" />
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-1000 ease-out"
+        />
       </svg>
       <div className="absolute text-center">
-        <div className="font-display font-extrabold text-2xl leading-none">{score}</div>
-        <div className="text-xs font-bold mt-0.5" style={{ color }}>{grade}</div>
+        <div className="font-display text-2xl font-extrabold leading-none">{score}</div>
+        <div className="mt-0.5 text-xs font-bold" style={{ color }}>{grade}</div>
       </div>
     </div>
   );
@@ -57,74 +94,71 @@ function SectionCard({ section }: { section: ATSSection }) {
   const color = section.score >= 80 ? '#10B981' : section.score >= 55 ? '#F59E0B' : '#EF4444';
 
   return (
-    <div className="border border-[var(--border-default)] rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-subtle)] transition-colors"
+    <Card className="overflow-hidden">
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => setOpen((value) => !value)}
+        className="h-auto w-full justify-start rounded-none px-4 py-3.5"
       >
         <div className="flex-1 text-left">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-sm">{section.name}</span>
-            <span className="text-xs font-bold ml-4 shrink-0" style={{ color }}>
+            <span className="text-sm font-medium">{section.name}</span>
+            <span className="ml-4 shrink-0 text-xs font-bold" style={{ color }}>
               {section.score}/100
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 bg-[var(--bg-muted)] rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${section.score}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full rounded-full"
-              style={{ background: color }}
-            />
-          </div>
+          <Progress value={section.score} className="mt-2 h-1.5" />
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-[var(--text-muted)] shrink-0" /> : <ChevronDown className="w-4 h-4 text-[var(--text-muted)] shrink-0" />}
-      </button>
+        {open
+          ? <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
+          : <ChevronDown className="size-4 shrink-0 text-muted-foreground" />}
+      </Button>
 
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-            className="overflow-hidden border-t border-[var(--border-default)]">
-            <div className="p-4 space-y-3">
+          <motion.div
+            initial={{ height: 0 }}
+            animate={{ height: 'auto' }}
+            exit={{ height: 0 }}
+            className="overflow-hidden border-t"
+          >
+            <div className="space-y-3 p-4">
               {section.issues.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--error)] mb-1.5 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5" /> Issues
-                  </p>
-                  <ul className="space-y-1">
-                    {section.issues.map((issue, i) => (
-                      <li key={i} className="text-xs text-[var(--text-secondary)] flex items-start gap-1.5">
-                        <span className="text-[var(--error)] shrink-0 mt-0.5">✗</span>{issue}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertTitle>Issues</AlertTitle>
+                  <AlertDescription>
+                    <ul className="space-y-1">
+                      {section.issues.map((issue, index) => <li key={index}>× {issue}</li>)}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               )}
               {section.suggestions.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-[var(--brand-primary)] mb-1.5 flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5" /> Suggestions
-                  </p>
-                  <ul className="space-y-1">
-                    {section.suggestions.map((s, i) => (
-                      <li key={i} className="text-xs text-[var(--text-secondary)] flex items-start gap-1.5">
-                        <span className="text-[var(--brand-primary)] shrink-0 mt-0.5">→</span>{s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <Alert>
+                  <Info className="size-4 text-primary" />
+                  <AlertTitle>Suggestions</AlertTitle>
+                  <AlertDescription>
+                    <ul className="space-y-1">
+                      {section.suggestions.map((suggestion, index) => (
+                        <li key={index}>→ {suggestion}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               )}
               {section.issues.length === 0 && section.suggestions.length === 0 && (
-                <p className="text-xs text-[#10B981] flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5" /> This section looks great!
-                </p>
+                <Alert variant="success">
+                  <CheckCircle className="size-4" />
+                  <AlertTitle>This section looks great</AlertTitle>
+                </Alert>
               )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Card>
   );
 }
 
@@ -135,11 +169,15 @@ export default function ATSPage() {
 
   const { data: resumes = [] } = useQuery({
     queryKey: ['resumes'],
-    queryFn: () => api.get('/resumes').then((r) => r.data),
+    queryFn: () => api.get('/resumes').then((response) => response.data),
   });
 
   const analyze = async () => {
-    if (!selectedResumeId) { toast.error('Select a resume first'); return; }
+    if (!selectedResumeId) {
+      toast.error('Select a resume first');
+      return;
+    }
+
     setAnalyzing(true);
     try {
       const { data } = await api.get(`/ats/${selectedResumeId}`);
@@ -152,51 +190,55 @@ export default function ATSPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="font-display font-extrabold text-3xl">ATS Analyzer</h1>
-        <p className="text-[var(--text-secondary)] mt-1 text-sm">
+        <h1 className="font-display text-3xl font-extrabold">ATS Analyzer</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Score your resume across 7 dimensions. No external API — built-in engine.
         </p>
       </div>
 
-      {/* Resume selector */}
-      <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-6">
-        <label className="block text-sm font-medium mb-3">Select a Resume to Analyze</label>
-        {resumes.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-[var(--text-muted)] mb-3">No resumes yet.</p>
-            <Link href="/resume/builder"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00C896]/15 text-[#00C896] text-sm font-medium hover:bg-[#00C896]/25 transition-colors">
-              Build your first resume <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <select
-              value={selectedResumeId}
-              onChange={(e) => { setSelectedResumeId(e.target.value); setReport(null); }}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 focus:border-[#00C896]"
-            >
-              <option value="">Choose resume…</option>
-              {resumes.map((r: { _id: string; title: string }) => (
-                <option key={r._id} value={r._id}>{r.title}</option>
-              ))}
-            </select>
-            <button
-              onClick={analyze}
-              disabled={analyzing || !selectedResumeId}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-[#00C896]/20"
-            >
-              {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
-              {analyzing ? 'Analyzing…' : 'Analyze'}
-            </button>
-          </div>
-        )}
-      </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <Label>Select a resume to analyze</Label>
+        </CardHeader>
+        <CardContent>
+          {resumes.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className="mb-3 text-sm text-muted-foreground">No resumes yet.</p>
+              <Button asChild variant="secondary">
+                <Link href="/resume/builder">
+                  Build your first resume <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Select
+                value={selectedResumeId}
+                onValueChange={(value) => {
+                  setSelectedResumeId(value);
+                  setReport(null);
+                }}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Choose resume…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {resumes.map((resume: { _id: string; title: string }) => (
+                    <SelectItem key={resume._id} value={resume._id}>{resume.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" onClick={analyze} disabled={analyzing || !selectedResumeId}>
+                {analyzing ? <Loader2 className="size-4 animate-spin" /> : <Target className="size-4" />}
+                {analyzing ? 'Analyzing…' : 'Analyze'}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Report */}
       <AnimatePresence>
         {report && (
           <motion.div
@@ -204,109 +246,109 @@ export default function ATSPage() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-5"
           >
-            {/* Score overview */}
-            <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-6">
-              <div className="flex items-center gap-8">
-                <ScoreRing score={report.totalScore} grade={report.grade} />
-                <div className="flex-1">
-                  <h2 className="font-display font-bold text-xl mb-1">
-                    {report.totalScore >= 80 ? '🎉 ATS-Ready Resume!' :
-                     report.totalScore >= 60 ? '👍 Good Foundation' :
-                     report.totalScore >= 40 ? '⚠️ Needs Improvement' :
-                     '🚨 Critical Issues Found'}
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)] mb-4">
-                    {report.totalScore >= 80
-                      ? 'Your resume will pass most ATS filters. Focus on tailoring keywords per job.'
-                      : 'Follow the priority fixes below to increase your interview callback rate.'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl bg-[var(--bg-subtle)] text-center">
-                      <div className="font-display font-bold text-lg text-[#10B981]">{report.readabilityScore}%</div>
-                      <div className="text-xs text-[var(--text-muted)]">Readability</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[var(--bg-subtle)] text-center">
-                      <div className="font-display font-bold text-lg text-[#6C63FF]">{report.formattingScore}%</div>
-                      <div className="text-xs text-[var(--text-muted)]">Formatting</div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+                  <ScoreRing score={report.totalScore} grade={report.grade} />
+                  <div className="flex-1">
+                    <CardTitle className="mb-1">
+                      {report.totalScore >= 80
+                        ? 'ATS-ready resume'
+                        : report.totalScore >= 60
+                          ? 'Good foundation'
+                          : report.totalScore >= 40
+                            ? 'Needs improvement'
+                            : 'Critical issues found'}
+                    </CardTitle>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      {report.totalScore >= 80
+                        ? 'Your resume will pass most ATS filters. Focus on tailoring keywords per job.'
+                        : 'Follow the priority fixes below to increase your interview callback rate.'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-muted p-3 text-center">
+                        <div className="font-display text-lg font-bold text-primary">{report.readabilityScore}%</div>
+                        <div className="text-xs text-muted-foreground">Readability</div>
+                      </div>
+                      <div className="rounded-lg bg-muted p-3 text-center">
+                        <div className="font-display text-lg font-bold text-violet-500">{report.formattingScore}%</div>
+                        <div className="text-xs text-muted-foreground">Formatting</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Priority fixes */}
             {report.priorityFixes.length > 0 && (
-              <div className="bg-[#EF4444]/5 border border-[#EF4444]/20 rounded-2xl p-5">
-                <h3 className="font-semibold text-sm flex items-center gap-2 text-[#EF4444] mb-3">
-                  <Zap className="w-4 h-4" /> Priority Fixes ({report.priorityFixes.length})
-                </h3>
-                <ul className="space-y-2">
-                  {report.priorityFixes.map((fix, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="w-5 h-5 rounded-full bg-[#EF4444]/20 text-[#EF4444] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                      {fix}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <Alert variant="destructive">
+                <Zap className="size-4" />
+                <AlertTitle>Priority fixes ({report.priorityFixes.length})</AlertTitle>
+                <AlertDescription>
+                  <ol className="list-decimal space-y-1 pl-4">
+                    {report.priorityFixes.map((fix, index) => <li key={index}>{fix}</li>)}
+                  </ol>
+                </AlertDescription>
+              </Alert>
             )}
 
-            {/* Strengths */}
             {report.strengths.length > 0 && (
-              <div className="bg-[#10B981]/5 border border-[#10B981]/20 rounded-2xl p-5">
-                <h3 className="font-semibold text-sm flex items-center gap-2 text-[#10B981] mb-3">
-                  <CheckCircle className="w-4 h-4" /> Strengths
-                </h3>
-                <ul className="space-y-1">
-                  {report.strengths.map((s, i) => (
-                    <li key={i} className="text-sm flex items-center gap-2">
-                      <span className="text-[#10B981]">✓</span>{s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <Alert variant="success">
+                <CheckCircle className="size-4" />
+                <AlertTitle>Strengths</AlertTitle>
+                <AlertDescription>
+                  <ul className="space-y-1">
+                    {report.strengths.map((strength, index) => <li key={index}>✓ {strength}</li>)}
+                  </ul>
+                </AlertDescription>
+              </Alert>
             )}
 
-            {/* Section scores */}
             <div>
-              <h3 className="font-display font-bold text-lg mb-3">Section Breakdown</h3>
+              <h3 className="mb-3 font-display text-lg font-bold">Section breakdown</h3>
               <div className="space-y-2">
-                {report.sections.map((section) => (
-                  <SectionCard key={section.name} section={section} />
-                ))}
+                {report.sections.map((section) => <SectionCard key={section.name} section={section} />)}
               </div>
             </div>
 
-            {/* Keywords */}
-            <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5">
-              <h3 className="font-semibold text-sm mb-4">Keyword Analysis
-                <span className="ml-2 text-xs font-normal text-[var(--text-muted)]">density: {report.keywords.density}%</span>
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-medium text-[#10B981] mb-2">✓ Found ({report.keywords.found.length})</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {report.keywords.found.slice(0, 15).map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 rounded-full bg-[#10B981]/15 text-[#10B981] text-xs">{kw}</span>
-                    ))}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Keyword analysis</CardTitle>
+                <p className="text-xs text-muted-foreground">Density: {report.keywords.density}%</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-primary">
+                      Found ({report.keywords.found.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {report.keywords.found.slice(0, 15).map((keyword) => (
+                        <Badge key={keyword} variant="secondary">{keyword}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-amber-600">
+                      Missing ({report.keywords.missing.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {report.keywords.missing.slice(0, 10).map((keyword) => (
+                        <Badge key={keyword} variant="outline" className="border-amber-500/30 text-amber-600">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#F59E0B] mb-2">⚠ Missing ({report.keywords.missing.length})</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {report.keywords.missing.slice(0, 10).map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 rounded-full bg-[#F59E0B]/15 text-[#F59E0B] text-xs">{kw}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Fix button */}
-            <Link href={`/resume/builder/${selectedResumeId}`}
-              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white font-semibold hover:opacity-90 transition-opacity shadow-lg">
-              Fix Issues in Builder <ArrowRight className="w-4 h-4" />
-            </Link>
+            <Button asChild size="lg" className="w-full">
+              <Link href={`/resume/builder/${selectedResumeId}`}>
+                Fix issues in builder <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>

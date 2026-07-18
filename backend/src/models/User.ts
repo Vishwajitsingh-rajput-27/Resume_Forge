@@ -78,8 +78,6 @@ const userSchema = new Schema<IUser>(
 );
 
 // ─── Indexes ──────────────────────────────────────────────────────────────────
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
 userSchema.index({ createdAt: -1 });
 
 // ─── Pre-save: hash password ──────────────────────────────────────────────────

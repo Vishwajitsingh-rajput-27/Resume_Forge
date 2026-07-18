@@ -27,6 +27,7 @@ export interface SkillCategory {
 }
 export interface ResumeData {
   id?: string;
+  status?: 'draft' | 'complete';
   title: string;
   templateId: string;
   colorTheme: string;
@@ -44,6 +45,7 @@ export interface ResumeData {
 }
 
 const emptyResume = (): ResumeData => ({
+  status: 'draft',
   title: 'My Resume',
   templateId: 'modern',
   colorTheme: '#00C896',
@@ -86,6 +88,7 @@ interface ResumeStore {
   updateSkillCategory: (id: string, cat: Partial<SkillCategory>) => void;
   removeSkillCategory: (id: string) => void;
   addCertification: (cert: Certification) => void;
+  updateCertification: (id: string, cert: Partial<Certification>) => void;
   removeCertification: (id: string) => void;
   setAchievements: (items: string[]) => void;
   addLanguage: (lang: { id: string; language: string; proficiency: string }) => void;
@@ -95,6 +98,8 @@ interface ResumeStore {
   setColor: (color: string) => void;
   setFont: (font: string) => void;
   setResumeId: (id: string) => void;
+  detachResume: () => void;
+  setStatus: (status: 'draft' | 'complete') => void;
   setAtsScore: (score: number) => void;
   setIsSaving: (v: boolean) => void;
   setLastSaved: (ts: string) => void;
@@ -152,6 +157,16 @@ export const useResumeStore = create<ResumeStore>()(
 
       addCertification: (cert) =>
         set((s) => ({ resume: { ...s.resume, certifications: [...s.resume.certifications, cert] }, isDirty: true })),
+      updateCertification: (id, cert) =>
+        set((s) => ({
+          resume: {
+            ...s.resume,
+            certifications: s.resume.certifications.map((item) =>
+              item.id === id ? { ...item, ...cert } : item,
+            ),
+          },
+          isDirty: true,
+        })),
       removeCertification: (id) =>
         set((s) => ({ resume: { ...s.resume, certifications: s.resume.certifications.filter((c) => c.id !== id) }, isDirty: true })),
 
@@ -173,16 +188,42 @@ export const useResumeStore = create<ResumeStore>()(
         set((s) => ({ resume: { ...s.resume, fontFamily }, isDirty: true })),
       setResumeId: (id) =>
         set((s) => ({ resume: { ...s.resume, id } })),
+      detachResume: () =>
+        set((s) => ({
+          resume: { ...s.resume, id: undefined, status: 'draft' },
+          isDirty: false,
+          lastSaved: null,
+        })),
+      setStatus: (status) =>
+        set((s) => ({ resume: { ...s.resume, status } })),
       setAtsScore: (atsScore) => set({ atsScore }),
       setIsSaving: (isSaving) => set({ isSaving }),
       setLastSaved: (lastSaved) => set({ lastSaved, isDirty: false }),
-      resetResume: () => set({ resume: emptyResume(), currentStep: 0, isDirty: false, atsScore: null }),
-      loadResume: (data) => set({ resume: data, isDirty: false }),
+      resetResume: () => set({
+        resume: emptyResume(),
+        currentStep: 0,
+        isDirty: false,
+        isSaving: false,
+        lastSaved: null,
+        atsScore: null,
+      }),
+      loadResume: (data) => set({
+        resume: { ...data, status: data.status || 'draft' },
+        currentStep: 0,
+        isDirty: false,
+        isSaving: false,
+        lastSaved: null,
+      }),
     }),
     {
       name: 'resumeai-builder',
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ resume: s.resume, currentStep: s.currentStep }),
+      // A server document may only be edited through /resume/builder/[id].
+      // Persist the draft content, but never persist the server identifier.
+      partialize: (s) => ({
+        resume: { ...s.resume, id: undefined, status: 'draft' as const },
+        currentStep: s.currentStep,
+      }),
     }
   )
 );

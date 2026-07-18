@@ -2,6 +2,9 @@
 import { useState } from 'react';
 import { Plus, X, Heart } from 'lucide-react';
 import { useResumeStore } from '@/store/resume-store';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const SUGGESTIONS = [
   'Open Source', 'Machine Learning', 'Hiking', 'Photography', 'Chess',
@@ -26,7 +29,7 @@ export function InterestsStep() {
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-[var(--text-muted)]">
+      <p className="text-sm text-muted-foreground">
         Interests show personality and help break the ice in interviews. Keep it genuine.
       </p>
 
@@ -34,21 +37,22 @@ export function InterestsStep() {
       {resume.interests.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {resume.interests.map((interest) => (
-            <span
+            <Badge
               key={interest}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00C896]/15 text-[#00C896] text-sm font-medium"
+              variant="secondary"
+              className="gap-1.5 py-1.5"
             >
               {interest}
-              <button onClick={() => remove(interest)} className="hover:text-red-400 transition-colors">
+              <button type="button" onClick={() => remove(interest)} className="hover:text-destructive" aria-label={`Remove ${interest}`}>
                 <X className="w-3 h-3" />
               </button>
-            </span>
+            </Badge>
           ))}
         </div>
       )}
 
       {resume.interests.length === 0 && (
-        <div className="text-center py-6 text-[var(--text-muted)]">
+        <div className="py-6 text-center text-muted-foreground">
           <Heart className="w-10 h-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No interests added yet. Pick from suggestions below or type your own.</p>
         </div>
@@ -56,34 +60,38 @@ export function InterestsStep() {
 
       {/* Input */}
       <div className="flex gap-2">
-        <input
+        <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(input); } }}
           placeholder="Type an interest and press Enter…"
-          className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 placeholder:text-[var(--text-muted)]"
+          className="h-11 flex-1"
         />
-        <button
+        <Button
+          type="button"
           onClick={() => add(input)}
           disabled={!input.trim()}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#00C896]/20 text-[#00C896] text-sm font-medium hover:bg-[#00C896]/30 transition-colors disabled:opacity-40"
+          className="h-11"
         >
           <Plus className="w-4 h-4" /> Add
-        </button>
+        </Button>
       </div>
 
       {/* Suggestions */}
       <div>
-        <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Quick suggestions — click to add:</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Quick suggestions — click to add:</p>
         <div className="flex flex-wrap gap-2">
           {SUGGESTIONS.filter((s) => !resume.interests.includes(s)).map((s) => (
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               key={s}
               onClick={() => add(s)}
-              className="px-3 py-1.5 rounded-full border border-[var(--border-default)] text-xs text-[var(--text-secondary)] hover:border-[#00C896]/40 hover:text-[#00C896] hover:bg-[#00C896]/10 transition-all"
+              className="h-8 rounded-full text-xs"
             >
               + {s}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

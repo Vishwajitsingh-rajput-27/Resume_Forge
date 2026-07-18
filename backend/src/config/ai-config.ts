@@ -1,9 +1,3 @@
-// ─── AI Provider Configuration ────────────────────────────────────────────────
-// Switch providers by setting AI_PROVIDER in your .env:
-//   AI_PROVIDER=GROQ          ← fastest, most generous free tier (recommended)
-//   AI_PROVIDER=GEMINI        ← Google Gemini, great quality, free via AI Studio
-//   AI_PROVIDER=GROQ_FALLBACK ← tries Groq first, falls back to Gemini on error
-
 export type AIProvider = 'GROQ' | 'GEMINI' | 'GROQ_FALLBACK';
 
 export interface AIConfig {
@@ -16,46 +10,37 @@ export interface AIConfig {
   timeout: number;
 }
 
-// ─── Free Model Catalogues ────────────────────────────────────────────────────
-
+// Provider model IDs change over time. Environment variables always take
+// precedence, while these defaults track stable, generally available models.
 export const AI_MODELS = {
   GROQ: {
-    // All free with generous RPM limits on https://console.groq.com
-    default: 'llama-3.1-8b-instant',   // fastest
-    quality: 'llama-3.3-70b-versatile', // best quality
+    default: 'openai/gpt-oss-20b',
+    quality: 'openai/gpt-oss-120b',
     available: [
-      'llama-3.1-8b-instant',    // 30K TPM free – great for bullet points / quick tasks
-      'llama-3.3-70b-versatile', // 6K TPM free  – best quality for cover letters
-      'llama3-8b-8192',          // legacy alias still works
-      'llama3-70b-8192',         // legacy alias still works
-      'mixtral-8x7b-32768',      // 5K TPM free  – large context window
-      'gemma2-9b-it',            // Google Gemma via Groq
-      'gemma-7b-it',             // smaller Gemma
+      'openai/gpt-oss-20b',
+      'openai/gpt-oss-120b',
+      'qwen/qwen3.6-27b',
     ],
   },
   GEMINI: {
-    // Free via https://aistudio.google.com — no credit card required
-    default: 'gemini-1.5-flash',       // 15 RPM / 1M TPD free
-    quality: 'gemini-1.5-pro',         // 2 RPM / 50 requests/day free
+    default: 'gemini-2.5-flash',
+    quality: 'gemini-2.5-pro',
     available: [
-      'gemini-1.5-flash',        // best free option: fast + capable
-      'gemini-1.5-flash-8b',     // ultra-fast, lighter tasks
-      'gemini-1.5-pro',          // most capable (daily limit on free)
-      'gemini-2.0-flash',        // newest Flash (check availability)
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-pro',
     ],
   },
-};
-
-// ─── Build Config from ENV ────────────────────────────────────────────────────
+} as const;
 
 const buildGroqConfig = (): AIConfig => ({
   provider: 'GROQ',
-  baseUrl: 'https://api.groq.com/openai/v1',           // OpenAI-compatible ✓
+  baseUrl: 'https://api.groq.com/openai/v1',
   apiKey: process.env.GROQ_API_KEY || '',
   model: process.env.GROQ_MODEL || AI_MODELS.GROQ.default,
   maxTokens: 2048,
   temperature: 0.7,
-  timeout: 20000,
+  timeout: 20_000,
 });
 
 const buildGeminiConfig = (): AIConfig => ({
@@ -65,60 +50,55 @@ const buildGeminiConfig = (): AIConfig => ({
   model: process.env.GEMINI_MODEL || AI_MODELS.GEMINI.default,
   maxTokens: 2048,
   temperature: 0.7,
-  timeout: 30000,
+  timeout: 30_000,
 });
 
 export const getAIConfig = (): AIConfig => {
   const provider = (process.env.AI_PROVIDER as AIProvider) || 'GROQ';
-
   const map: Record<AIProvider, AIConfig> = {
-    GROQ:          buildGroqConfig(),
-    GEMINI:        buildGeminiConfig(),
-    GROQ_FALLBACK: buildGroqConfig(), // same config; fallback handled in the service layer
+    GROQ: buildGroqConfig(),
+    GEMINI: buildGeminiConfig(),
+    GROQ_FALLBACK: buildGroqConfig(),
   };
-
   return map[provider] ?? buildGroqConfig();
 };
 
 export const aiConfig = getAIConfig();
 
-// ─── Prompt Library ───────────────────────────────────────────────────────────
-
 export const RESUME_PROMPTS = {
-
   IMPROVE_SUMMARY: (summary: string, role: string) =>
     `You are an expert ATS resume writer. Rewrite the professional summary below for a ${role} role.
 Rules:
-- ATS-friendly (include industry keywords)
+- ATS-friendly (include relevant industry keywords)
 - Achievement-oriented, confident tone
-- 2–4 sentences, NO first-person "I"
-- Return ONLY the rewritten summary, nothing else.
+- 2-4 sentences, no first-person "I"
+- Return only the rewritten summary.
 
 Original: ${summary}`,
 
   IMPROVE_EXPERIENCE: (responsibility: string, role: string) =>
-    `You are a senior resume coach. Transform this weak responsibility into a single strong, ATS-optimised bullet point for a ${role}.
+    `You are a senior resume coach. Transform this responsibility into one strong, ATS-optimized bullet point for a ${role}.
 Rules:
-- Start with a past-tense action verb (e.g. Engineered, Reduced, Launched)
-- Add a quantifiable result where plausible (%, $, time saved, scale)
-- ≤ 25 words
-- Return ONLY the bullet point, no quotes, no hyphen prefix.
+- Start with a past-tense action verb
+- Add a quantifiable result only where it is plausible
+- Use no more than 25 words
+- Return only the bullet point, with no quote or hyphen prefix.
 
 Input: ${responsibility}`,
 
   GENERATE_SKILLS: (domain: string) =>
-    `You are a technical recruiter. List the 15 most in-demand skills for a ${domain} professional in 2024.
-Return ONLY a valid JSON array of strings, e.g.: ["React","Node.js","SQL"]
-No markdown, no explanations.`,
+    `You are a technical recruiter. List the 15 most in-demand current skills for a ${domain} professional.
+Return only a valid JSON array of strings, for example: ["React","Node.js","SQL"].
+Do not include markdown or explanations.`,
 
   IMPROVE_PROJECT: (description: string, tech: string) =>
-    `Rewrite this project description for a resume. Tech used: ${tech}.
-Rules: ATS-friendly, show impact, ≤ 45 words, past tense.
-Return ONLY the improved text.
+    `Rewrite this project description for a resume. Technologies: ${tech}.
+Make it ATS-friendly, show impact, use past tense, and stay within 45 words.
+Return only the improved text.
 
 Original: ${description}`,
 
-  GENERATE_COVER_LETTER: (p: {
+  GENERATE_COVER_LETTER: (params: {
     name: string;
     role: string;
     company: string;
@@ -126,38 +106,37 @@ Original: ${description}`,
     experienceSummary: string;
     jobDescription: string;
   }) =>
-    `Write a professional ATS-optimised cover letter.
-Candidate: ${p.name}
-Position: ${p.role} at ${p.company}
-Key skills: ${p.skills.slice(0, 8).join(', ')}
-Background: ${p.experienceSummary}
-Job description (excerpt): ${p.jobDescription.slice(0, 600)}
+    `Write a professional ATS-optimized cover letter.
+Candidate: ${params.name}
+Position: ${params.role} at ${params.company}
+Key skills: ${params.skills.slice(0, 8).join(', ')}
+Background: ${params.experienceSummary}
+Job description excerpt: ${params.jobDescription.slice(0, 600)}
 
-Structure: Opening hook → Why I'm a fit (2–3 specific skill matches) → Closing CTA
-Tone: Confident, concise, human
-Word count: 220–280
-
-Return ONLY the letter body (no "Dear Hiring Manager" salutation needed—caller adds it).`,
+Structure: opening hook, two or three specific skill matches, and a closing call to action.
+Tone: confident, concise, and human.
+Length: 220-280 words.
+Return only the letter body; do not add a salutation.`,
 
   GENERATE_INTERVIEW_QUESTIONS: (role: string, skills: string[], level: string) =>
     `Generate interview questions for a ${level}-level ${role}.
 Relevant skills: ${skills.slice(0, 10).join(', ')}
 
-Output a JSON array with exactly 13 objects:
-- 5 technical  (difficulty: "easy"|"medium"|"hard")
-- 3 behavioural (STAR format hints in sampleAnswer)
+Return a valid JSON array with exactly 13 objects:
+- 5 technical
+- 3 behavioural, with STAR guidance in sampleAnswer
 - 3 situational
 - 2 role-specific
 
-Schema per object:
-{"type":"technical|behavioural|situational|role-specific","question":"...","difficulty":"easy|medium|hard","sampleAnswer":"2-sentence guide answer"}
+Each object must follow this schema:
+{"type":"technical|behavioural|situational|role-specific","question":"...","difficulty":"easy|medium|hard","sampleAnswer":"two-sentence guidance"}
 
-Return ONLY valid JSON, no markdown fences.`,
+Return only valid JSON with no markdown fences.`,
 
   MATCH_JOB: (resumeText: string, jobDescription: string) =>
-    `You are an ATS system. Compare this resume to the job description and return a JSON object:
+    `You are an ATS system. Compare this resume to the job description and return this JSON shape:
 {
-  "matchScore": <0–100>,
+  "matchScore": <0-100>,
   "matchedSkills": ["skill1"],
   "missingSkills": ["skill2"],
   "keywordGaps": ["keyword"],
@@ -167,8 +146,8 @@ Return ONLY valid JSON, no markdown fences.`,
 Resume:
 ${resumeText.slice(0, 2000)}
 
-Job Description:
+Job description:
 ${jobDescription.slice(0, 1500)}
 
-Return ONLY valid JSON.`,
+Return only valid JSON.`,
 };

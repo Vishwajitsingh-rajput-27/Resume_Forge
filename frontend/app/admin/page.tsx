@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-  Users, FileText, Activity, AlertTriangle,
+  Users, FileText, Activity,
   Server, Zap, RefreshCw, Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,6 +11,18 @@ import { useAuthStore } from '@/store/auth-store';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface AdminStats { users: number; resumes: number }
 interface UserRow {
@@ -46,9 +58,15 @@ export default function AdminPage() {
 
   const ping = async () => {
     setPinging(true);
-    const result = await aiApi.ping();
-    setPingResult(result.data);
-    setPinging(false);
+    setPingResult(null);
+    try {
+      const result = await aiApi.ping();
+      setPingResult(result.data);
+    } catch {
+      toast.error('AI provider health check failed.');
+    } finally {
+      setPinging(false);
+    }
   };
 
   const trackedAiUses = (usersData?.users || []).reduce(
@@ -70,35 +88,39 @@ export default function AdminPage() {
           <h1 className="font-display font-extrabold text-3xl">Admin Panel</h1>
           <p className="text-[var(--text-secondary)] mt-1 text-sm">Platform overview and user management.</p>
         </div>
-        <span className="px-3 py-1.5 rounded-full bg-[var(--error)]/15 text-[var(--error)] text-xs font-bold border border-[var(--error)]/20">
+        <Badge variant="destructive">
           ADMIN
-        </span>
+        </Badge>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${s.color}18` }}>
-              <s.icon className="w-4.5 h-4.5" style={{ color: s.color }} />
-            </div>
-            <div className="font-display font-extrabold text-3xl">
-              {statsLoading ? <div className="shimmer h-8 w-16 rounded" /> : s.value}
-            </div>
-            <div className="text-xs text-[var(--text-muted)] mt-1">{s.label}</div>
+            className="h-full">
+            <Card className="h-full rounded-2xl border-[var(--border-default)] bg-[var(--bg-elevated)]">
+              <CardContent className="p-5">
+                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: `${s.color}18` }}>
+                  <s.icon className="h-[18px] w-[18px]" style={{ color: s.color }} />
+                </div>
+                <div className="font-display text-3xl font-extrabold">
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : s.value}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{s.label}</p>
+              </CardContent>
+            </Card>
           </motion.div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* User table */}
-        <div className="lg:col-span-2 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-default)]">
-            <h2 className="font-semibold">Recent Users</h2>
-            <span className="text-xs text-[var(--text-muted)]">{usersData?.total ?? 0} total</span>
-          </div>
-          <div className="overflow-x-auto">
+        <Card className="overflow-hidden rounded-2xl border-[var(--border-default)] bg-[var(--bg-elevated)] lg:col-span-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-[var(--border-default)] px-5 py-4">
+            <CardTitle className="text-base">Recent Users</CardTitle>
+            <CardDescription>{usersData?.total ?? 0} total</CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0">
             {usersLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" />
@@ -117,9 +139,11 @@ export default function AdminPage() {
                     <tr key={u._id} className="border-b border-[var(--border-default)] last:border-0 hover:bg-[var(--bg-subtle)] transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                            {u.name[0]}
-                          </div>
+                          <Avatar className="h-7 w-7">
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-[#6C63FF] text-xs font-bold text-white">
+                              {u.name[0]}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="font-medium text-xs truncate max-w-32">{u.name}</p>
                             <p className="text-[10px] text-[var(--text-muted)] truncate max-w-32">{u.email}</p>
@@ -127,9 +151,9 @@ export default function AdminPage() {
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <span className="rounded-full bg-[var(--bg-muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
+                        <Badge variant={u.role === 'admin' ? 'destructive' : 'secondary'} className="text-[10px]">
                           {u.role === 'admin' ? 'ADMIN' : 'MEMBER'}
-                        </span>
+                        </Badge>
                       </td>
                       <td className="px-5 py-3 text-xs text-[var(--text-secondary)]">{u.usage?.resumesCreated ?? 0}</td>
                       <td className="px-5 py-3 text-xs text-[var(--text-secondary)]">{u.usage?.aiGenerations ?? 0}</td>
@@ -141,88 +165,80 @@ export default function AdminPage() {
                 </tbody>
               </table>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* System Health */}
         <div className="space-y-4">
           {/* AI Status */}
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
+          <Card className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-elevated)]">
+            <CardHeader className="flex-row items-center justify-between space-y-0 p-5 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
                 <Zap className="w-4 h-4 text-[#F7B731]" /> AI Provider
-              </h2>
-              <button onClick={ping} disabled={pinging}
-                className="p-1.5 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-muted)] transition-colors">
+              </CardTitle>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={ping} disabled={pinging} aria-label="Refresh AI provider status">
                 <RefreshCw className={`w-3.5 h-3.5 ${pinging ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
+              </Button>
+            </CardHeader>
 
+            <CardContent className="px-5 pb-5">
             {pingResult ? (
-              <div className={`p-3 rounded-xl border text-xs ${
-                pingResult.ok ? 'bg-[#10B981]/10 border-[#10B981]/20' : 'bg-[var(--error)]/10 border-[var(--error)]/20'
-              }`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Activity className={`w-3.5 h-3.5 ${pingResult.ok ? 'text-[#10B981]' : 'text-[var(--error)]'}`} />
-                  <span className="font-medium">{pingResult.ok ? 'Operational' : 'Degraded'}</span>
-                </div>
-                <p className="text-[var(--text-muted)]">Provider: {pingResult.provider}</p>
-                <p className="text-[var(--text-muted)]">Latency: {pingResult.latencyMs}ms</p>
-              </div>
+              <Alert variant={pingResult.ok ? 'success' : 'destructive'}>
+                <Activity />
+                <AlertTitle>{pingResult.ok ? 'Operational' : 'Degraded'}</AlertTitle>
+                <AlertDescription>
+                  Provider: {pingResult.provider}<br />
+                  Latency: {pingResult.latencyMs}ms
+                </AlertDescription>
+              </Alert>
             ) : (
-              <button onClick={ping} disabled={pinging}
-                className="w-full py-2.5 rounded-xl border border-dashed border-[var(--border-default)] text-xs text-[var(--text-muted)] hover:border-[var(--border-strong)] transition-colors flex items-center justify-center gap-2">
+              <Button type="button" variant="outline" onClick={ping} disabled={pinging} className="w-full border-dashed text-xs text-muted-foreground">
                 {pinging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
                 Run Health Check
-              </button>
+              </Button>
             )}
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* System checklist */}
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5">
-            <h2 className="font-semibold text-sm flex items-center gap-2 mb-4">
-              <Server className="w-4 h-4 text-[#6C63FF]" /> System Status
-            </h2>
-            <div className="space-y-2.5">
-              {[
-                { label: 'MongoDB Atlas',      ok: true },
-                { label: 'Groq API',           ok: true },
-                { label: 'Gemini API',         ok: true },
-                { label: 'Cloudinary Storage', ok: true },
-                { label: 'Email Service',      ok: false, warn: 'Configure SMTP' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--text-secondary)]">{item.label}</span>
-                  {item.ok ? (
-                    <span className="text-[#10B981] font-medium">● Operational</span>
-                  ) : (
-                    <span className="text-[#F59E0B] font-medium flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> {item.warn}
-                    </span>
-                  )}
+          {/* Infrastructure checks */}
+          <Card className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-elevated)]">
+            <CardHeader className="p-5 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Server className="w-4 h-4 text-[#6C63FF]" /> Infrastructure checks
+              </CardTitle>
+              <CardDescription>
+                No live health probes are connected for these services.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2.5 px-5 pb-5">
+              {['MongoDB Atlas', 'Cloudinary Storage', 'Email Service'].map((service) => (
+                <div key={service} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-[var(--text-secondary)]">{service}</span>
+                  <Badge variant="secondary" className="shrink-0 font-medium">
+                    Not monitored
+                  </Badge>
                 </div>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Infrastructure usage */}
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5">
-            <h2 className="font-semibold text-sm mb-4">Infrastructure Usage</h2>
-            {[
-              { label: 'MongoDB (M0)', used: 48, total: 512, unit: 'MB' },
-              { label: 'Cloudinary',   used: 0.8, total: 25, unit: 'GB' },
-            ].map((item) => (
-              <div key={item.label} className="mb-3">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[var(--text-secondary)]">{item.label}</span>
-                  <span className="text-[var(--text-muted)]">{item.used}/{item.total} {item.unit}</span>
-                </div>
-                <div className="h-1.5 bg-[var(--bg-muted)] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#00C896] rounded-full" style={{ width: `${(item.used / item.total) * 100}%` }} />
-                </div>
+          <Card className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-elevated)]">
+            <CardHeader className="p-5 pb-4">
+              <CardTitle className="text-sm">Infrastructure Usage</CardTitle>
+              <CardDescription>
+                Provider usage metrics are not connected to ResumeForge.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <div className="rounded-xl border border-dashed bg-muted/30 p-4 text-center">
+                <p className="text-sm font-medium">No usage data available</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Check MongoDB and Cloudinary directly for current storage and quota usage.
+                </p>
               </div>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

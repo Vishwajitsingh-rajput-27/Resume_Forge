@@ -10,6 +10,8 @@
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
   --primary: 160 84% 32%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96%;
@@ -23,6 +25,7 @@
   --border: 214 32% 91%;
   --input: 214 32% 91%;
   --ring: 160 84% 32%;
+  --radius: 0.75rem;
 
   /* Brand */
   --brand-primary:    #00C896;   /* emerald-teal */
@@ -74,6 +77,8 @@
   --foreground: 210 40% 98%;
   --card: 222 40% 8%;
   --card-foreground: 210 40% 98%;
+  --popover: 222 40% 8%;
+  --popover-foreground: 210 40% 98%;
   --primary: 158 64% 52%;
   --primary-foreground: 222 47% 7%;
   --secondary: 217 33% 15%;
@@ -115,8 +120,8 @@ html {
 
 body {
   font-family: var(--font-body);
-  background-color: var(--bg-base);
-  color: var(--text-primary);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   line-height: 1.6;
 }
 
@@ -131,7 +136,39 @@ code, pre, kbd { font-family: var(--font-mono); }
 
 ::selection {
   background: rgba(0, 200, 150, 0.2);
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+}
+
+@layer components {
+  .app-page {
+    @apply mx-auto w-full max-w-7xl space-y-6;
+  }
+
+  .app-panel {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+  }
+
+  .field-help {
+    @apply mt-1.5 text-xs leading-relaxed text-muted-foreground;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-xs font-medium text-destructive;
+  }
 }
 
 /* ─── Scrollbar ───────────────────────────────────────────────────────────── */

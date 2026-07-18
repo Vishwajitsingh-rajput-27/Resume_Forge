@@ -1,6 +1,8 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   User, GraduationCap, Briefcase, FolderKanban, Wrench,
@@ -22,6 +24,9 @@ import { AchievementsStep } from '@/components/resume/builder/steps/Achievements
 import { LanguagesStep } from '@/components/resume/builder/steps/LanguagesStep';
 import { InterestsStep } from '@/components/resume/builder/steps/InterestsStep';
 import { LivePreview } from '@/components/resume/builder/LivePreview';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 const STEPS = [
   { icon: User,          label: 'Personal',       short: 'Info' },
@@ -42,36 +47,154 @@ const STEP_COMPONENTS = [
 ];
 
 export default function ResumeBuilderPage() {
-  const { currentStep, setStep, nextStep, prevStep, resume, isDirty, setIsSaving, setLastSaved, setResumeId, isSaving } = useResumeStore();
+  const {
+    currentStep,
+    setStep,
+    nextStep,
+    prevStep,
+    resume,
+    isDirty,
+    setIsSaving,
+    setLastSaved,
+    setResumeId,
+    setStatus,
+    isSaving,
+  } = useResumeStore();
+  const params = useParams();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const rawRouteId = params?.id;
+  const routeId = Array.isArray(rawRouteId) ? rawRouteId[0] : rawRouteId;
   const [showPreview, setShowPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [routeReady, setRouteReady] = useState(false);
+  const routeInitializedRef = useRef(false);
+  const sessionResumeIdRef = useRef<string | null>(null);
+  const saveInFlightRef = useRef(false);
 
   const StepComponent = STEP_COMPONENTS[currentStep];
 
+  useEffect(() => {
+    if (routeId) {
+      routeInitializedRef.current = true;
+      setRouteReady(true);
+      return;
+    }
+
+    if (routeInitializedRef.current) return;
+
+    const initializeBaseRoute = () => {
+      if (routeInitializedRef.current) return;
+      routeInitializedRef.current = true;
+
+      const requestedNew =
+        new URLSearchParams(window.location.search).get('new') === '1';
+      const store = useResumeStore.getState();
+
+      if (requestedNew) {
+        store.resetResume();
+        router.replace('/resume/builder', { scroll: false });
+      } else if (store.resume.id) {
+        // A server resume can only be edited from its ID-based URL.
+        store.detachResume();
+      }
+
+      setRouteReady(true);
+    };
+
+    if (useResumeStore.persist.hasHydrated()) {
+      initializeBaseRoute();
+      return;
+    }
+
+    return useResumeStore.persist.onFinishHydration(initializeBaseRoute);
+  }, [routeId, router]);
+
   // Auto-save
-  const saveResume = useCallback(async () => {
-    if (!isDirty) return;
-    setIsSaving(true);
-    try {
-      let res;
-      if (resume.id) {
-        res = await resumeApi.update(resume.id, resume);
-      } else {
-        res = await resumeApi.create(resume);
-        setResumeId(res.data._id);
+  const saveResume = useCallback(async (
+    statusOverride?: 'draft' | 'complete',
+  ): Promise<boolean> => {
+    if (!routeReady || saveInFlightRef.current) return false;
+    if (!isDirty && !statusOverride) return true;
+
+    const hasMinimumProfile =
+      resume.personalInfo.name.trim().length >= 2 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resume.personalInfo.email);
+
+    // The local builder is always persisted by Zustand. Wait to create the
+    // server-side draft until it has the two fields required to identify it.
+    if (!hasMinimumProfile) {
+      if (statusOverride === 'complete') {
+        toast.error('Add your name and a valid email before finishing.');
+        setStep(0);
+        return false;
       }
       setLastSaved(new Date().toISOString());
+      return true;
+    }
+
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    try {
+      const status = statusOverride ?? resume.status ?? 'draft';
+      const payload = { ...resume, id: undefined, status };
+      const editableResumeId = routeId ?? sessionResumeIdRef.current;
+      let res;
+      if (editableResumeId) {
+        res = await resumeApi.update(editableResumeId, payload);
+      } else {
+        res = await resumeApi.create(payload);
+        const createdId = res.data._id as string;
+        sessionResumeIdRef.current = createdId;
+        setResumeId(createdId);
+
+        // Once a new draft exists on the server, its URL becomes the source
+        // of truth for all subsequent updates.
+        if (statusOverride !== 'complete') {
+          router.replace(`/resume/builder/${createdId}`);
+        }
+      }
+      setStatus(status);
+      setLastSaved(new Date().toISOString());
+      return true;
     } catch {
-      toast.error('Auto-save failed. Your progress is still in local storage.');
+      toast.error(
+        statusOverride === 'complete'
+          ? 'Could not finish your resume. Please try again.'
+          : 'Auto-save failed. Your progress is still in local storage.',
+      );
+      return false;
     } finally {
+      saveInFlightRef.current = false;
       setIsSaving(false);
     }
-  }, [isDirty, resume, setIsSaving, setLastSaved, setResumeId]);
+  }, [
+    isDirty,
+    resume,
+    routeId,
+    routeReady,
+    router,
+    setIsSaving,
+    setLastSaved,
+    setResumeId,
+    setStatus,
+    setStep,
+  ]);
 
   useEffect(() => {
-    const timer = setTimeout(() => { if (isDirty) saveResume(); }, 2500);
+    if (!routeReady || !isDirty) return;
+    const timer = setTimeout(() => { saveResume(); }, 2500);
     return () => clearTimeout(timer);
-  }, [isDirty, saveResume]);
+  }, [isDirty, routeReady, saveResume]);
+
+  const finishResume = async () => {
+    const finished = await saveResume('complete');
+    if (!finished) return;
+
+    await queryClient.invalidateQueries({ queryKey: ['resumes'] });
+    toast.success('Resume finished and saved.');
+    router.push('/dashboard');
+  };
 
   const handleExport = async (format: 'pdf' | 'docx') => {
   setIsExporting(true);
@@ -93,74 +216,79 @@ export default function ResumeBuilderPage() {
 };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="app-page">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display font-bold text-2xl">{resume.title || 'Resume Builder'}</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
+          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             {isSaving ? (
               <><Loader2 className="w-3 h-3 animate-spin" /> Saving…</>
             ) : (
-              <><Save className="w-3 h-3 text-[#10B981]" /> Auto-saved</>
+              <><Save className="h-3 w-3 text-primary" /> Auto-saved</>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={showPreview ? 'secondary' : 'outline'}
             onClick={() => setShowPreview(!showPreview)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
-              showPreview ? 'bg-[#00C896]/15 border-[#00C896]/40 text-[#00C896]' : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
-            }`}
+            className={cn(showPreview && 'bg-primary/10 text-primary hover:bg-primary/15')}
           >
             <Eye className="w-4 h-4" />
             <span className="hidden sm:inline">{showPreview ? 'Hide' : 'Preview'}</span>
-          </button>
+          </Button>
           <div className="flex gap-1">
             {(['pdf', 'docx'] as const).map((fmt) => (
-              <button
+              <Button
+                type="button"
+                variant="outline"
                 key={fmt}
                 onClick={() => handleExport(fmt)}
                 disabled={isExporting}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-sm font-medium hover:border-[var(--border-strong)] transition-all disabled:opacity-60"
+                className="px-3"
               >
                 {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
                 {fmt.toUpperCase()}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
       </div>
 
       {/* Step indicator — scrollable on mobile */}
-      <div className="flex gap-1 mb-8 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-1 overflow-x-auto rounded-xl border bg-card p-1.5 shadow-sm scrollbar-hide">
         {STEPS.map((step, i) => {
           const active = i === currentStep;
           const done = i < currentStep;
           return (
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               key={step.label}
               onClick={() => setStep(i)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
-                active
-                  ? 'bg-[#00C896]/15 text-[#00C896] border border-[#00C896]/30'
-                  : done
-                  ? 'text-[#10B981] bg-[#10B981]/10 border border-transparent'
-                  : 'text-[var(--text-muted)] border border-transparent hover:bg-[var(--bg-subtle)]'
-              }`}
+              className={cn(
+                'shrink-0 whitespace-nowrap text-xs',
+                active && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+                done && !active && 'text-primary',
+                !done && !active && 'text-muted-foreground',
+              )}
             >
               <step.icon className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{step.label}</span>
               <span className="sm:hidden">{step.short}</span>
-            </button>
+            </Button>
           );
         })}
       </div>
 
       {/* Main content */}
-      <div className={`grid gap-6 ${showPreview ? 'lg:grid-cols-2' : 'lg:grid-cols-1 max-w-2xl'}`}>
+      <div className={cn('grid gap-6', showPreview ? 'lg:grid-cols-2' : 'max-w-3xl lg:grid-cols-1')}>
         {/* Form panel */}
-        <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-6">
+        <Card>
+          <CardContent className="p-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -169,13 +297,13 @@ export default function ResumeBuilderPage() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center gap-3 mb-6 pb-5 border-b border-[var(--border-default)]">
-                <div className="w-9 h-9 rounded-xl bg-[#00C896]/15 flex items-center justify-center">
-                  {(() => { const Icon = STEPS[currentStep].icon; return <Icon className="w-5 h-5 text-[#00C896]" />; })()}
+              <div className="mb-6 flex items-center gap-3 border-b pb-5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  {(() => { const Icon = STEPS[currentStep].icon; return <Icon className="h-5 w-5" />; })()}
                 </div>
                 <div>
                   <h2 className="font-display font-bold text-lg">{STEPS[currentStep].label}</h2>
-                  <p className="text-xs text-[var(--text-muted)]">Step {currentStep + 1} of {STEPS.length}</p>
+                  <p className="text-xs text-muted-foreground">Step {currentStep + 1} of {STEPS.length}</p>
                 </div>
               </div>
               <StepComponent />
@@ -183,40 +311,51 @@ export default function ResumeBuilderPage() {
           </AnimatePresence>
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-8 pt-5 border-t border-[var(--border-default)]">
-            <button
+          <div className="mt-8 flex items-center justify-between border-t pt-5">
+            <Button
+              type="button"
+              variant="outline"
               onClick={prevStep}
               disabled={currentStep === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-default)] text-sm font-medium disabled:opacity-40 hover:border-[var(--border-strong)] transition-all"
             >
               <ChevronLeft className="w-4 h-4" /> Back
-            </button>
+            </Button>
             <div className="flex gap-1">
               {STEPS.map((_, i) => (
-                <button key={i} onClick={() => setStep(i)}
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${
-                    i === currentStep ? 'w-6 bg-[#00C896]' : i < currentStep ? 'bg-[#10B981]' : 'bg-[var(--border-strong)]'
-                  }`}
+                <button type="button" key={i} onClick={() => setStep(i)}
+                  aria-label={`Go to step ${i + 1}`}
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full bg-border transition-all',
+                    i === currentStep && 'w-6 bg-primary',
+                    i < currentStep && 'bg-primary/60',
+                  )}
                 />
               ))}
             </div>
             {currentStep < STEPS.length - 1 ? (
-              <button
+              <Button
+                type="button"
                 onClick={nextStep}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-[#00C896]/20"
               >
                 Next <ChevronRight className="w-4 h-4" />
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={saveResume}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+              <Button
+                type="button"
+                onClick={finishResume}
+                disabled={isSaving || !routeReady}
               >
-                <Save className="w-4 h-4" /> Finish
-              </button>
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Finish
+              </Button>
             )}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Live preview panel */}
         {showPreview && (

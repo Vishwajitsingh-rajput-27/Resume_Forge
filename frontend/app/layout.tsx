@@ -27,11 +27,20 @@ export const metadata: Metadata = {
     siteName: 'ResumeForge',
     title: 'ResumeForge — Every resume tool, completely free',
     description: 'A polished, ATS-aware resume builder with AI writing, seven templates, and unlimited exports.',
+    images: [
+      {
+        url: '/og-resumeforge.png',
+        width: 1735,
+        height: 906,
+        alt: 'ResumeForge free career toolkit and resume builder',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'ResumeForge — Every resume tool, completely free',
     description: 'Build, tailor, and export a stronger resume without premium locks or watermarks.',
+    images: ['/og-resumeforge.png'],
   },
 };
 

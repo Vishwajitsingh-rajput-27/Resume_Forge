@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Linkedin, Github, Globe, Briefcase } from 'lucide-react';
 import { useResumeStore, PersonalInfo } from '@/store/resume-store';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const schema = z.object({
   name:     z.string().min(2, 'Full name is required'),
@@ -51,18 +53,21 @@ export function PersonalInfoStep() {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {fields.map((field) => (
         <div key={field.name} className={field.name === 'name' ? 'sm:col-span-2' : ''}>
-          <label className="block text-sm font-medium mb-1.5">{field.label}</label>
+          <Label htmlFor={`personal-${field.name}`} className="mb-1.5 block">
+            {field.label}
+          </Label>
           <div className="relative">
-            <field.icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-            <input
+            <field.icon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id={`personal-${field.name}`}
               {...register(field.name)}
               type={field.type || 'text'}
               placeholder={field.placeholder}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] focus:outline-none focus:ring-2 focus:ring-[#00C896]/40 focus:border-[#00C896] text-sm transition-all placeholder:text-[var(--text-muted)]"
+              className="h-11 pl-10"
             />
           </div>
           {errors[field.name] && (
-            <p className="text-xs text-[var(--error)] mt-1">{errors[field.name]?.message}</p>
+            <p className="field-error">{errors[field.name]?.message}</p>
           )}
         </div>
       ))}

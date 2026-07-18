@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { aiConfig, getAIConfig, RESUME_PROMPTS, AIProvider } from '../config/ai-config';
+import { aiConfig, RESUME_PROMPTS, AIProvider } from '../config/ai-config';
 import { logger } from '../utils/logger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,8 +30,11 @@ const createGroqClient = (): AxiosInstance =>
   });
 
 async function callGroq(messages: ChatMessage[], model?: string): Promise<AIResponse> {
+  if (!process.env.GROQ_API_KEY?.trim()) {
+    throw new Error('Groq API key is not configured.');
+  }
   const client = createGroqClient();
-  const resolvedModel = model || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const resolvedModel = model || process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
   const start = Date.now();
 
   const { data } = await client.post('/chat/completions', {
@@ -85,8 +88,11 @@ function toGeminiContents(messages: ChatMessage[]) {
 }
 
 async function callGemini(messages: ChatMessage[], model?: string): Promise<AIResponse> {
+  if (!process.env.GEMINI_API_KEY?.trim()) {
+    throw new Error('Gemini API key is not configured.');
+  }
   const client = createGeminiClient();
-  const resolvedModel = model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const resolvedModel = model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const apiKey = process.env.GEMINI_API_KEY;
   const start = Date.now();
 
@@ -136,12 +142,12 @@ async function dispatch(
 
   // Quality hint: use larger model where accuracy > speed
   const groqModel = opts?.preferHighQuality
-    ? (process.env.GROQ_QUALITY_MODEL || 'llama-3.3-70b-versatile')
-    : (process.env.GROQ_MODEL || 'llama-3.1-8b-instant');
+    ? (process.env.GROQ_QUALITY_MODEL || 'openai/gpt-oss-120b')
+    : (process.env.GROQ_MODEL || 'openai/gpt-oss-20b');
 
   const geminiModel = opts?.preferHighQuality
-    ? (process.env.GEMINI_QUALITY_MODEL || 'gemini-1.5-pro')
-    : (process.env.GEMINI_MODEL || 'gemini-1.5-flash');
+    ? (process.env.GEMINI_QUALITY_MODEL || 'gemini-2.5-pro')
+    : (process.env.GEMINI_MODEL || 'gemini-2.5-flash');
 
   if (provider === 'GROQ') {
     return callGroq(messages, groqModel);
@@ -205,9 +211,19 @@ export const AIService = {
 
   // ── Resume Features ────────────────────────────────────────────────────────
 
-  async improveSummary(summary: string, role: string): Promise<string> {
+  async improveSummary(
+    summary: string,
+    role: string,
+    style: 'concise' | 'standard' | 'detailed' = 'standard',
+  ): Promise<string> {
+    const targets = {
+      concise: '40–60 words',
+      standard: '60–90 words',
+      detailed: '90–120 words',
+    };
     const res = await AIService.complete(
-      RESUME_PROMPTS.IMPROVE_SUMMARY(summary, role),
+      `${RESUME_PROMPTS.IMPROVE_SUMMARY(summary, role)}
+Target length: ${targets[style]}.`,
       { preferHighQuality: true }
     );
     logger.info(`[AI] improveSummary | ${res.provider} | ${res.durationMs}ms`);

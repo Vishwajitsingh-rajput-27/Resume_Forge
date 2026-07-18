@@ -11,12 +11,22 @@ type Health = {
   timestamp: string;
   version: string;
   environment: string;
+  checks?: {
+    database: boolean;
+    ai: boolean;
+    googleAuth: boolean;
+    passwordResetEmail: boolean;
+  };
 };
 
 async function getHealth(): Promise<Health | null> {
   try {
+    const apiOrigin = process.env.NEXT_PUBLIC_API_URL
+      ?.replace(/\/api\/?$/, '')
+      .replace(/\/$/, '');
     const response = await fetch(
-      process.env.BACKEND_HEALTH_URL || 'http://127.0.0.1:5000/health',
+      process.env.BACKEND_HEALTH_URL
+        || (apiOrigin ? `${apiOrigin}/health` : 'http://127.0.0.1:5000/health'),
       { cache: 'no-store' },
     );
     if (!response.ok) return null;
@@ -97,18 +107,44 @@ export default async function BackendStatusPage() {
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
             <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             <div>
-              <p className="text-sm font-semibold">Premium gates removed</p>
-              <p className="text-xs text-slate-500">All API features use access tracking only.</p>
+              <p className="text-sm font-semibold">No paid feature gates</p>
+              <p className="text-xs text-slate-500">Usage tracking never locks a product feature.</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
             <Database className="h-5 w-5 text-amber-400" />
             <div>
-              <p className="text-sm font-semibold">Preview mode</p>
-              <p className="text-xs text-slate-500">Add MongoDB credentials for persistence routes.</p>
+              <p className="text-sm font-semibold">Configuration checks</p>
+              <p className="text-xs text-slate-500">Non-sensitive readiness reported by the API.</p>
             </div>
           </div>
         </div>
+
+        {health?.checks && (
+          <Card className="mt-5 border-white/10 bg-white/[0.06] text-white">
+            <CardHeader>
+              <CardTitle className="text-base">Feature readiness</CardTitle>
+              <CardDescription className="text-slate-400">
+                Configuration is present; individual provider quotas can still affect requests.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {[
+                ['MongoDB persistence', health.checks.database],
+                ['AI provider', health.checks.ai],
+                ['Google sign-in', health.checks.googleAuth],
+                ['Password-reset email', health.checks.passwordResetEmail],
+              ].map(([label, ready]) => (
+                <div key={String(label)} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-3">
+                  <span className="text-sm text-slate-300">{String(label)}</span>
+                  <Badge className={ready ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-400' : 'bg-amber-400/15 text-amber-300 hover:bg-amber-400/15'}>
+                    {ready ? 'Ready' : 'Needs config'}
+                  </Badge>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </main>
   );

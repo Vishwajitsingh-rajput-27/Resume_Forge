@@ -6,6 +6,11 @@ import { v4 as uuid } from 'uuid';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useResumeStore, Experience } from '@/store/resume-store';
 import { aiApi } from '@/lib/api-client';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const empty = (): Experience => ({
   id: uuid(), company: '', role: '', location: '',
@@ -26,7 +31,10 @@ export function ExperienceStep() {
     const key = `${expId}-${bulletIdx}`;
     setAiLoading((p) => ({ ...p, [key]: true }));
     try {
-      const { data } = await aiApi.improveBullet(text, exp.role);
+      const { data } = await aiApi.improveBullet(
+        text,
+        exp.role || resume.personalInfo.jobTitle || 'Professional',
+      );
       const updated = [...exp.responsibilities];
       updated[bulletIdx] = data.improved;
       updateExperience(expId, { responsibilities: updated });
@@ -59,28 +67,30 @@ export function ExperienceStep() {
   return (
     <div className="space-y-4">
       {resume.experience.length === 0 && (
-        <div className="text-center py-10 text-[var(--text-muted)]">
+        <div className="py-10 text-center text-muted-foreground">
           <p className="text-sm mb-4">No work experience added yet.</p>
           <p className="text-xs">Internships, part-time, freelance — all count!</p>
         </div>
       )}
 
       {resume.experience.map((exp, i) => (
-        <div key={exp.id} className="border border-[var(--border-default)] rounded-xl overflow-hidden">
+        <Card key={exp.id} className="overflow-hidden shadow-none">
           {/* Header */}
           <div
-            className="flex items-center gap-3 px-4 py-3 bg-[var(--bg-subtle)] cursor-pointer"
+            className="flex cursor-pointer items-center gap-3 bg-muted/50 px-4 py-3"
             onClick={() => setExpanded(expanded === exp.id ? null : exp.id)}
           >
             <GripVertical className="w-4 h-4 text-[var(--text-muted)]" />
             <div className="flex-1 min-w-0">
               <div className="font-medium text-sm truncate">{exp.role || `Experience ${i + 1}`}</div>
-              <div className="text-xs text-[var(--text-muted)] truncate">{exp.company}</div>
+              <div className="truncate text-xs text-muted-foreground">{exp.company}</div>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); removeExperience(exp.id); }}
-              className="p-1.5 rounded-lg hover:bg-[var(--error)]/15 hover:text-[var(--error)] text-[var(--text-muted)] transition-colors">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <Button type="button" variant="ghost" size="icon"
+              onClick={(e) => { e.stopPropagation(); removeExperience(exp.id); }}
+              className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              aria-label="Remove experience">
+              <Trash2 />
+            </Button>
             {expanded === exp.id ? <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />}
           </div>
 
@@ -94,41 +104,43 @@ export function ExperienceStep() {
                   { key: 'location' as const, label: 'Location', placeholder: 'Remote / NYC' },
                 ].map((f) => (
                   <div key={f.key} className={f.key === 'location' ? '' : ''}>
-                    <label className="block text-xs font-medium mb-1">{f.label}</label>
-                    <input
+                    <Label htmlFor={`experience-${exp.id}-${f.key}`} className="mb-1 block text-xs">
+                      {f.label}
+                    </Label>
+                    <Input
+                      id={`experience-${exp.id}-${f.key}`}
                       value={exp[f.key] as string}
                       onChange={(e) => updateExperience(exp.id, { [f.key]: e.target.value })}
                       placeholder={f.placeholder}
-                      className="w-full px-3 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-1 focus:ring-[#00C896]/40 focus:border-[#00C896]"
                     />
                   </div>
                 ))}
                 <div>
-                  <label className="block text-xs font-medium mb-1">Start Date</label>
-                  <input type="month" value={exp.startDate}
+                  <Label htmlFor={`experience-${exp.id}-start`} className="mb-1 block text-xs">Start date</Label>
+                  <Input id={`experience-${exp.id}-start`} type="month" value={exp.startDate}
                     onChange={(e) => updateExperience(exp.id, { startDate: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-1 focus:ring-[#00C896]/40" />
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">End Date</label>
-                  <input type="month" value={exp.endDate} disabled={exp.current}
+                  <Label htmlFor={`experience-${exp.id}-end`} className="mb-1 block text-xs">End date</Label>
+                  <Input id={`experience-${exp.id}-end`} type="month" value={exp.endDate} disabled={exp.current}
                     onChange={(e) => updateExperience(exp.id, { endDate: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-1 focus:ring-[#00C896]/40 disabled:opacity-50" />
+                  />
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-xs cursor-pointer">
-                <input type="checkbox" checked={exp.current}
+              <Label className="flex cursor-pointer items-center gap-2 text-xs">
+                <Checkbox checked={exp.current}
                   onChange={(e) => updateExperience(exp.id, { current: e.target.checked, endDate: '' })}
-                  className="accent-[#00C896]" />
+                />
                 Currently working here
-              </label>
+              </Label>
 
               {/* Responsibilities */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium">Responsibilities & Achievements</label>
-                  <span className="text-[10px] text-[var(--text-muted)]">Aim for 3–6 bullets</span>
+                  <Label className="text-xs">Responsibilities & achievements</Label>
+                  <span className="text-[10px] text-muted-foreground">Aim for 3–6 bullets</span>
                 </div>
                 <div className="space-y-2">
                   {exp.responsibilities.map((bullet, bIdx) => (
@@ -138,43 +150,50 @@ export function ExperienceStep() {
                         onChange={(e) => updateBullet(exp.id, bIdx, e.target.value)}
                         minRows={2}
                         placeholder="Developed and deployed REST APIs that reduced response time by 35%…"
-                        className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-1 focus:ring-[#00C896]/40 focus:border-[#00C896] resize-none"
+                        className="flex min-h-20 flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <div className="flex flex-col gap-1 shrink-0">
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => improveBullet(exp.id, bIdx)}
                           disabled={aiLoading[`${exp.id}-${bIdx}`]}
                           title="Improve with AI"
-                          className="p-1.5 rounded-lg bg-[#6C63FF]/15 text-[#6C63FF] hover:bg-[#6C63FF]/25 transition-colors disabled:opacity-50"
+                          className="h-8 w-8 bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 hover:text-violet-600"
                         >
                           {aiLoading[`${exp.id}-${bIdx}`] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                        </button>
+                        </Button>
                         {exp.responsibilities.length > 1 && (
-                          <button onClick={() => removeBullet(exp.id, bIdx)}
-                            className="p-1.5 rounded-lg hover:bg-[var(--error)]/15 hover:text-[var(--error)] text-[var(--text-muted)] transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <Button type="button" variant="ghost" size="icon"
+                            onClick={() => removeBullet(exp.id, bIdx)}
+                            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            aria-label="Remove responsibility">
+                            <Trash2 />
+                          </Button>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-                <button onClick={() => addBullet(exp.id)}
-                  className="mt-2 flex items-center gap-1.5 text-xs text-[#00C896] hover:underline">
+                <Button type="button" variant="link" size="sm" onClick={() => addBullet(exp.id)}
+                  className="mt-2 h-auto px-0 text-xs">
                   <Plus className="w-3.5 h-3.5" /> Add bullet
-                </button>
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       ))}
 
-      <button
+      <Button
+        type="button"
+        variant="outline"
         onClick={() => { const e = empty(); addExperience(e); setExpanded(e.id); }}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border-default)] text-[var(--text-muted)] hover:border-[#00C896]/40 hover:text-[#00C896] text-sm font-medium transition-all flex items-center justify-center gap-2"
+        className="h-12 w-full border-dashed text-muted-foreground hover:border-primary/40 hover:text-primary"
       >
         <Plus className="w-4 h-4" /> Add Work Experience
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Allows CI/validation builds to run alongside the local dev server on
+  // Windows, where `.next/trace` is held open by the running preview.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   images: {
     domains: ['res.cloudinary.com', 'lh3.googleusercontent.com', 'avatars.githubusercontent.com'],
   },

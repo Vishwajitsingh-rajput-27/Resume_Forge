@@ -184,7 +184,7 @@ export function DeveloperTemplate({ data }: ResumeTemplateProps) {
   const accent = resume.colorTheme || '#00C896';
 
   return (
-    <div className="bg-[#0D1117] text-gray-200 min-h-[1056px] p-8" style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
+    <div className="bg-[#0D1117] text-gray-200 min-h-[1056px] p-8" style={{ fontSize: 11, fontFamily: 'inherit' }}>
       {/* Terminal-style header */}
       <div className="mb-5">
         <p className="text-[9px] text-gray-500 mb-1">{`// resume.json`}</p>

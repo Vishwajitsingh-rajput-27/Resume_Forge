@@ -3,6 +3,12 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import { useResumeStore } from '@/store/resume-store';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 const PROFICIENCY = ['basic', 'conversational', 'professional', 'native'] as const;
 
@@ -20,79 +26,83 @@ export function LanguagesStep() {
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-[var(--text-muted)]">
+      <p className="text-sm text-muted-foreground">
         Add languages you speak. Multilingual candidates are highly valued.
       </p>
 
       {/* Add form */}
-      <div className="p-4 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-default)] space-y-3">
+      <Card className="bg-muted/30 shadow-none">
+        <CardContent className="space-y-3 p-4">
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-xs font-medium mb-1">Language</label>
-            <input
+            <Label htmlFor="language-name" className="mb-1 block text-xs">Language</Label>
+            <Input
+              id="language-name"
               value={langInput}
               onChange={(e) => setLangInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
               placeholder="e.g. Hindi, Spanish, Mandarin"
-              className="w-full px-3 py-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] text-sm focus:outline-none focus:ring-1 focus:ring-[#00C896]/40 placeholder:text-[var(--text-muted)]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-2">Proficiency Level</label>
+          <Label className="mb-2 block text-xs">Proficiency level</Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {PROFICIENCY.map((level) => (
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 key={level}
                 onClick={() => setProficiency(level)}
-                className={`py-2 px-3 rounded-lg border text-xs font-medium capitalize transition-all ${
-                  proficiency === level
-                    ? 'bg-[#00C896]/15 border-[#00C896]/40 text-[#00C896]'
-                    : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--border-strong)]'
-                }`}
+                className={cn(
+                  'capitalize',
+                  proficiency === level && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15',
+                )}
               >
                 {level}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
-        <button
+        <Button
+          type="button"
           onClick={add}
           disabled={!langInput.trim()}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-[#00C896] to-[#6C63FF] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+          className="w-full"
         >
           <Plus className="w-4 h-4" /> Add Language
-        </button>
-      </div>
+        </Button>
+        </CardContent>
+      </Card>
 
       {/* Language list */}
       {resume.languages.length > 0 && (
         <div className="space-y-2">
           {resume.languages.map((lang) => (
-            <div
+            <Card
               key={lang.id}
-              className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]"
+              className="flex items-center justify-between px-4 py-3 shadow-none"
             >
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">{lang.language}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                  lang.proficiency === 'native'       ? 'bg-[#00C896]/15 text-[#00C896]' :
-                  lang.proficiency === 'professional' ? 'bg-[#6C63FF]/15 text-[#6C63FF]' :
-                  lang.proficiency === 'conversational'? 'bg-[#F7B731]/15 text-[#F7B731]' :
-                  'bg-[var(--bg-muted)] text-[var(--text-muted)]'
-                }`}>
+                <Badge variant="secondary" className="capitalize">
                   {lang.proficiency}
-                </span>
+                </Badge>
               </div>
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => removeLanguage(lang.id)}
-                className="p-1.5 rounded-lg hover:bg-red-500/15 hover:text-red-400 text-[var(--text-muted)] transition-colors"
+                className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`Remove ${lang.language}`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+              </Button>
+            </Card>
           ))}
         </div>
       )}
