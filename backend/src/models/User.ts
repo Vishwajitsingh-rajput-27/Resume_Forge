@@ -14,9 +14,6 @@ export interface IUser extends Document {
   github?: string;
   portfolioUrl?: string;
   role: 'user' | 'admin';
-  plan: 'free' | 'pro' | 'enterprise';
-  planExpiresAt?: Date;
-  redeemedCodes: string[];
   isEmailVerified: boolean;
   emailVerificationToken?: string;
   passwordResetToken?: string;
@@ -34,8 +31,6 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
-  canUseFeature(feature: string): boolean;
-  isProActive(): boolean;
 }
 
 const userSchema = new Schema<IUser>(
@@ -51,10 +46,6 @@ const userSchema = new Schema<IUser>(
     github:   { type: String, maxlength: 200 },
     portfolioUrl: { type: String, maxlength: 200 },
     role:     { type: String, enum: ['user', 'admin'], default: 'user' },
-    plan:     { type: String, enum: ['free', 'pro', 'enterprise'], default: 'free' },
-    planExpiresAt: { type: Date },
-    // Tracks which promo codes this user has already redeemed
-    redeemedCodes: { type: [String], default: [] },
     isEmailVerified:        { type: Boolean, default: false },
     emailVerificationToken: { type: String, select: false },
     passwordResetToken:     { type: String, select: false },
@@ -89,7 +80,6 @@ const userSchema = new Schema<IUser>(
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 userSchema.index({ email: 1 });
 userSchema.index({ googleId: 1 });
-userSchema.index({ plan: 1 });
 userSchema.index({ createdAt: -1 });
 
 // ─── Pre-save: hash password ──────────────────────────────────────────────────
@@ -103,45 +93,6 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
   if (!this.password) return false;
   return bcrypt.compare(candidate, this.password);
-};
-
-// Check if pro/enterprise plan is still active (not expired)
-userSchema.methods.isProActive = function (): boolean {
-  if (this.plan === 'free') return false;
-  if (this.role === 'admin') return true;
-  if (!this.planExpiresAt) return true; // No expiry = lifetime
-  return new Date() < new Date(this.planExpiresAt);
-};
-
-const FREE_LIMITS: Record<string, number> = {
-  resumes:        3,
-  ai_improvement: 50,
-  cover_letter:   3,
-  interview_prep: 5,
-  job_match:      5,
-  download:       10,
-};
-
-userSchema.methods.canUseFeature = function (feature: string): boolean {
-  if (this.role === 'admin') return true;
-
-  // Pro/enterprise with valid (non-expired) plan = unlimited everything
-  if (this.plan !== 'free' && this.isProActive()) return true;
-
-  // If plan expired, downgrade check to free limits
-  const limit = FREE_LIMITS[feature];
-  if (limit === undefined) return true;
-
-  const usageMap: Record<string, number> = {
-    resumes:        this.usage.resumesCreated,
-    ai_improvement: this.usage.aiGenerations,
-    cover_letter:   this.usage.coverLettersCreated,
-    interview_prep: this.usage.aiGenerations,
-    job_match:      this.usage.aiGenerations,
-    download:       this.usage.downloadsCount,
-  };
-
-  return (usageMap[feature] ?? 0) < limit;
 };
 
 const User: Model<IUser> = mongoose.model<IUser>('User', userSchema);

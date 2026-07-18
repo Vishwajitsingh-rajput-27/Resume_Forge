@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import { protect } from '../middleware/auth';
-import { freemiumGuard } from '../middleware/freemium';
+import { trackUsage } from '../middleware/usage';
 import AIService from '../services/ai-provider';
 import { logger } from '../utils/logger';
 
@@ -29,7 +29,7 @@ const handleAIError = (err: unknown, res: Response) => {
 // POST /api/ai/improve-summary
 router.post(
   '/improve-summary',
-  freemiumGuard('ai_improvement'),
+  trackUsage('aiGenerations'),
   [
     body('summary').trim().notEmpty().withMessage('Summary is required').isLength({ max: 1000 }),
     body('role').trim().notEmpty().withMessage('Role is required').isLength({ max: 100 }),
@@ -47,7 +47,7 @@ router.post(
 // POST /api/ai/improve-bullet
 router.post(
   '/improve-bullet',
-  freemiumGuard('ai_improvement'),
+  trackUsage('aiGenerations'),
   [
     body('responsibility').trim().notEmpty().isLength({ max: 500 }),
     body('role').trim().notEmpty().isLength({ max: 100 }),
@@ -79,7 +79,7 @@ router.post(
 // POST /api/ai/improve-project
 router.post(
   '/improve-project',
-  freemiumGuard('ai_improvement'),
+  trackUsage('aiGenerations'),
   [
     body('description').trim().notEmpty().isLength({ max: 1000 }),
     body('tech').trim().notEmpty().isLength({ max: 300 }),
@@ -98,7 +98,7 @@ router.post(
 // ─── FIXED: skills and experienceSummary are now optional ────────────────────
 router.post(
   '/cover-letter',
-  freemiumGuard('cover_letter'),
+  trackUsage('coverLettersCreated'),
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('role').trim().notEmpty().withMessage('Job role is required'),
@@ -130,7 +130,7 @@ router.post(
 // POST /api/ai/interview-questions
 router.post(
   '/interview-questions',
-  freemiumGuard('interview_prep'),
+  trackUsage('aiGenerations'),
   [
     body('role').trim().notEmpty(),
     body('skills').optional().isArray(),
@@ -152,7 +152,7 @@ router.post(
 // POST /api/ai/job-match
 router.post(
   '/job-match',
-  freemiumGuard('job_match'),
+  trackUsage('aiGenerations'),
   [
     body('resumeText').trim().notEmpty().isLength({ min: 10, max: 5000 }),
     body('jobDescription').trim().notEmpty().isLength({ min: 10, max: 5000 }),
@@ -176,7 +176,7 @@ router.get('/ping', async (_req: Request, res: Response) => {
 // POST /api/ai/chat
 router.post(
   '/chat',
-  freemiumGuard('ai_improvement'),
+  trackUsage('aiGenerations'),
   [
     body('messages').isArray({ min: 1, max: 20 }),
     body('messages.*.role').isIn(['user', 'assistant', 'system']),

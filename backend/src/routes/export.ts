@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { protect } from '../middleware/auth';
-import { freemiumGuard } from '../middleware/freemium';
+import { trackUsage } from '../middleware/usage';
 import Resume from '../models/Resume';
 import { exportToPDF, exportToDOCX } from '../services/export-service';
 import { logger } from '../utils/logger';
@@ -9,7 +9,7 @@ const router = Router();
 router.use(protect);
 
 // GET /api/export/:id?format=pdf|docx
-router.get('/:id', freemiumGuard('download'), async (req: Request, res: Response) => {
+router.get('/:id', trackUsage('downloadsCount'), async (req: Request, res: Response) => {
   const format = (req.query.format as string) || 'pdf';
   if (!['pdf', 'docx'].includes(format)) return res.status(400).json({ error: 'format must be pdf or docx' });
 

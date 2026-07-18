@@ -2,8 +2,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-  Users, FileText, Crown, Activity, AlertTriangle,
-  TrendingUp, Server, Zap, RefreshCw, Loader2,
+  Users, FileText, Activity, AlertTriangle,
+  Server, Zap, RefreshCw, Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api, { aiApi } from '@/lib/api-client';
@@ -12,9 +12,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-interface AdminStats { users: number; resumes: number; proUsers: number }
+interface AdminStats { users: number; resumes: number }
 interface UserRow {
-  _id: string; name: string; email: string; plan: string;
+  _id: string; name: string; email: string;
   role: string; createdAt: string; usage: { resumesCreated: number; aiGenerations: number };
 }
 
@@ -51,11 +51,16 @@ export default function AdminPage() {
     setPinging(false);
   };
 
+  const trackedAiUses = (usersData?.users || []).reduce(
+    (total, currentUser) => total + (currentUser.usage?.aiGenerations ?? 0),
+    0
+  );
+
   const statCards = [
     { icon: Users,    label: 'Total Users',    value: stats?.users ?? '—',    color: '#00C896' },
     { icon: FileText, label: 'Total Resumes',  value: stats?.resumes ?? '—',  color: '#6C63FF' },
-    { icon: Crown,    label: 'Pro Users',      value: stats?.proUsers ?? '—', color: '#F7B731' },
-    { icon: TrendingUp, label: 'Conversion',   value: stats && stats.users > 0 ? `${Math.round((stats.proUsers / stats.users) * 100)}%` : '—', color: '#EC4899' },
+    { icon: Zap,      label: 'Tracked AI Uses', value: usersLoading ? '—' : trackedAiUses, color: '#F7B731' },
+    { icon: Activity, label: 'Access Model',    value: 'Free', color: '#EC4899' },
   ];
 
   return (
@@ -102,7 +107,7 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-default)]">
-                    {['User', 'Plan', 'Resumes', 'AI Uses', 'Joined'].map((h) => (
+                    {['User', 'Role', 'Resumes', 'AI Uses', 'Joined'].map((h) => (
                       <th key={h} className="text-left text-xs font-semibold text-[var(--text-muted)] px-5 py-3">{h}</th>
                     ))}
                   </tr>
@@ -122,9 +127,9 @@ export default function AdminPage() {
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          u.plan === 'pro' ? 'bg-[#F7B731]/20 text-[#F7B731]' : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
-                        }`}>{u.plan.toUpperCase()}</span>
+                        <span className="rounded-full bg-[var(--bg-muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
+                          {u.role === 'admin' ? 'ADMIN' : 'MEMBER'}
+                        </span>
                       </td>
                       <td className="px-5 py-3 text-xs text-[var(--text-secondary)]">{u.usage?.resumesCreated ?? 0}</td>
                       <td className="px-5 py-3 text-xs text-[var(--text-secondary)]">{u.usage?.aiGenerations ?? 0}</td>
@@ -200,9 +205,9 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Free tier usage */}
+          {/* Infrastructure usage */}
           <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-5">
-            <h2 className="font-semibold text-sm mb-4">Free Tier Usage</h2>
+            <h2 className="font-semibold text-sm mb-4">Infrastructure Usage</h2>
             {[
               { label: 'MongoDB (M0)', used: 48, total: 512, unit: 'MB' },
               { label: 'Cloudinary',   used: 0.8, total: 25, unit: 'GB' },

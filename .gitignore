@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Framework and build output
+.next/
+dist/
+build/
+coverage/
+
+# Local runtime files
+*.log
+*.pid
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# TypeScript incremental output
+*.tsbuildinfo

@@ -155,7 +155,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ user
             <Mail className="w-5 h-5" /> Say Hello
           </a>
           <p className="text-xs text-[#71717A] mt-8">
-            Portfolio powered by <a href="/" className="text-[#00C896] hover:underline">ResumeAI</a>
+            Portfolio powered by <a href="/" className="text-[#00C896] hover:underline">ResumeForge</a>
           </p>
         </section>
       </div>

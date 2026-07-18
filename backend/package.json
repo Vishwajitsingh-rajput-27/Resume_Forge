@@ -1,7 +1,7 @@
 {
-  "name": "resumeai-backend",
+  "name": "resumeforge-backend",
   "version": "1.0.0",
-  "description": "ResumeAI Backend API - Production-Ready Express.js Server",
+  "description": "ResumeForge Backend API - Production-Ready Express.js Server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",

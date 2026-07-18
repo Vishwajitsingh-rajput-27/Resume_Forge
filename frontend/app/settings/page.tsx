@@ -138,9 +138,9 @@ export default function SettingsPage() {
                   <div>
                     <p className="font-medium">{user?.name}</p>
                     <p className="text-sm text-[var(--text-muted)]">{user?.email}</p>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${
-                      user?.plan === 'pro' ? 'bg-[#F7B731]/20 text-[#F7B731]' : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
-                    }`}>{user?.plan?.toUpperCase()} Plan</span>
+                    <span className="mt-1 inline-block rounded-full bg-[#00C896]/15 px-2 py-0.5 text-xs font-bold text-[#00C896]">
+                      Free &amp; open
+                    </span>
                   </div>
                 </div>
 

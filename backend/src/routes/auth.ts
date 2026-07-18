@@ -20,7 +20,6 @@ const sendTokens = (res: Response, user: InstanceType<typeof User>) => {
       name: user.name,
       email: user.email,
       avatar: user.avatar,
-      plan: user.plan,
       role: user.role,
       isEmailVerified: user.isEmailVerified,
     },

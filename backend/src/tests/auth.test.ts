@@ -28,6 +28,7 @@ describe('POST /api/auth/register', () => {
     expect(res.body).toHaveProperty('refreshToken');
     expect(res.body.user.email).toBe('test@example.com');
     expect(res.body.user).not.toHaveProperty('password');
+    expect(res.body.user).not.toHaveProperty('plan');
   });
 
   it('returns 409 for duplicate email', async () => {

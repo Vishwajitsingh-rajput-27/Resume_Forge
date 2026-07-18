@@ -153,7 +153,7 @@ export default function PortfolioPage() {
           <div>
             <h2 className="font-semibold">Generate New Portfolio</h2>
             <p className="text-xs text-[var(--text-muted)]">
-              Creates a public URL like <code className="font-mono text-[#00C896]">resumeai.app/portfolio/your-name</code>
+              Creates a public URL like <code className="font-mono text-[#00C896]">your-domain.com/portfolio/your-name</code>
             </p>
           </div>
         </div>

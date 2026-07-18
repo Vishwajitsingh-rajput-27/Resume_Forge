@@ -82,7 +82,7 @@ export default function CoverLetterPage() {
       } else if (status === 400) {
         toast.error(`Missing field: ${serverMsg || 'check form inputs'}`);
       } else if (status === 403) {
-        toast.error('Free plan limit reached. Upgrade to Pro for unlimited cover letters.');
+        toast.error('Cover-letter generation is unavailable right now. Please try again later.');
       } else if (status === 503) {
         toast.error('AI API key missing. Add GROQ_API_KEY to Render environment variables.');
       } else if (status === 429) {

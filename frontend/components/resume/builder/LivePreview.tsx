@@ -1,31 +1,20 @@
 'use client';
+
+import { TEMPLATE_FONTS } from '@/lib/resume-templates';
 import { useResumeStore } from '@/store/resume-store';
-import { ModernTemplate } from '../templates/ModernTemplate';
-import { MinimalTemplate } from '../templates/MinimalTemplate';
-import { CorporateTemplate } from '../templates/CorporateTemplate';
-import { DeveloperTemplate } from '../templates/DeveloperTemplate';
+import { getTemplateComponent } from '../templates/registry';
 
 export function LivePreview() {
-  const { resume } = useResumeStore();
-
-  const templates: Record<string, React.ComponentType> = {
-    modern:    ModernTemplate,
-    minimal:   MinimalTemplate,
-    corporate: CorporateTemplate,
-    developer: DeveloperTemplate,
-  };
-
-  const Template = templates[resume.templateId] || ModernTemplate;
+  const resume = useResumeStore((state) => state.resume);
+  const Template = getTemplateComponent(resume.templateId);
+  const fontFamily =
+    TEMPLATE_FONTS.find((font) => font.value === resume.fontFamily)?.stack ??
+    TEMPLATE_FONTS[0].stack;
 
   return (
     <div
       className="resume-preview w-full"
-      style={{
-        fontFamily: resume.fontFamily === 'inter' ? 'Inter, sans-serif' :
-                    resume.fontFamily === 'georgia' ? 'Georgia, serif' :
-                    resume.fontFamily === 'mono' ? 'JetBrains Mono, monospace' :
-                    'Inter, sans-serif',
-      }}
+      style={{ fontFamily }}
     >
       <Template />
     </div>

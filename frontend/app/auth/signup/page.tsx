@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Zap, Loader2, Check } from 'lucide-react';
+import { Eye, EyeOff, FileText, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/auth-store';
@@ -24,9 +24,9 @@ type FormData = z.infer<typeof schema>;
 
 const perks = [
   'Free forever — no credit card',
-  '3 ATS-optimized resumes',
+  'Unlimited ATS-optimized resumes',
   'AI bullet & summary writer',
-  '1-click portfolio website',
+  'All seven templates and unlimited exports',
 ];
 
 export default function SignupPage() {
@@ -53,7 +53,7 @@ export default function SignupPage() {
   const onSubmit = async (data: FormData) => {
     try {
       await authRegister(data.name, data.email, data.password);
-      toast.success('Account created! Welcome to ResumeAI 🎉');
+      toast.success('Account created! Welcome to ResumeForge 🎉');
       router.push('/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
@@ -89,15 +89,15 @@ export default function SignupPage() {
       <div className="hidden lg:flex flex-col justify-center px-16 bg-gradient-to-b from-[#00C896]/10 to-[#6C63FF]/10 border-r border-[var(--border-default)] w-[420px] shrink-0">
         <div className="flex items-center gap-2 font-display font-bold text-xl mb-12">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
+            <FileText className="w-4 h-4 text-white" />
           </div>
-          <span className="text-gradient">ResumeAI</span>
+          <span className="text-gradient">ResumeForge</span>
         </div>
         <h2 className="font-display font-extrabold text-3xl mb-4 leading-tight">
           Your career starts here.
         </h2>
         <p className="text-[var(--text-secondary)] text-sm mb-10 leading-relaxed">
-          Join 50,000+ professionals who use ResumeAI to land interviews faster.
+          Build, tailor, and export every application without premium locks.
         </p>
         <ul className="space-y-4">
           {perks.map((p) => (
@@ -120,9 +120,9 @@ export default function SignupPage() {
         >
           <Link href="/" className="flex lg:hidden items-center justify-center gap-2 font-display font-bold text-xl mb-8">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
+              <FileText className="w-4 h-4 text-white" />
             </div>
-            <span className="text-gradient">ResumeAI</span>
+            <span className="text-gradient">ResumeForge</span>
           </Link>
 
           <h1 className="font-display font-bold text-2xl mb-1">Create your account</h1>

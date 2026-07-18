@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Sparkles, Target, Mail,
   Mic, Globe, Settings, LogOut, Zap, ChevronRight,
-  BarChart3, Crown, X,
+  BarChart3, X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useRouter } from 'next/navigation';
@@ -46,7 +46,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center shadow-md shadow-[#00C896]/20">
             <Zap className="w-4 h-4 text-white" />
           </div>
-          <span className="text-gradient">ResumeAI</span>
+          <span className="text-gradient">ResumeForge</span>
         </Link>
         {onClose && (
           <button onClick={onClose} className="lg:hidden text-[var(--text-muted)] hover:text-[var(--text-primary)]">
@@ -85,36 +85,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         })}
       </nav>
 
-{/* Upgrade banner — only for free users */}
-{user?.plan === 'free' && (
-  <div className="mx-3 mb-3 p-4 rounded-xl bg-gradient-to-br from-[#F7B731]/15 to-[#F97316]/10 border border-[#F7B731]/25">
-    <div className="flex items-center gap-2 mb-2">
-      <Crown className="w-4 h-4 text-[#F7B731]" />
-      <span className="text-xs font-bold">Go Pro</span>
-    </div>
-    <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">
-      Unlimited resumes, AI & all templates.
-    </p>
-    <Link
-      href="/upgrade"
-      onClick={onClose}
-      className="block text-center py-2 rounded-lg bg-gradient-to-r from-[#F7B731] to-[#F97316] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
-    >
-      Upgrade with Promo Code
-    </Link>
-  </div>
-)}
-
-{/* Pro badge — show for pro/enterprise users */}
-{user?.plan !== 'free' && (
-  <div className="mx-3 mb-3 p-3 rounded-xl bg-[#F7B731]/10 border border-[#F7B731]/20">
-    <div className="flex items-center gap-2">
-      <Crown className="w-4 h-4 text-[#F7B731]" />
-      <span className="text-xs font-bold text-[#F7B731]">Pro Active</span>
-      <span className="ml-auto text-[10px] text-[var(--text-muted)]">∞ Unlimited</span>
-    </div>
-  </div>
-)}
+      <div className="mx-3 mb-3 rounded-xl border border-[#00C896]/20 bg-gradient-to-br from-[#00C896]/12 to-[#6C63FF]/10 p-4">
+        <div className="mb-1.5 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-[#00C896]" />
+          <span className="text-xs font-bold text-[var(--text-primary)]">Free &amp; open</span>
+        </div>
+        <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+          Every tool and template is included.
+        </p>
+      </div>
 
       {/* User + settings */}
       <div className="border-t border-[var(--border-default)] p-3 space-y-0.5">
@@ -140,10 +119,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="text-sm font-medium truncate">{user?.name}</div>
             <div className="text-xs text-[var(--text-muted)] truncate">{user?.email}</div>
           </div>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-            user?.plan === 'pro' ? 'bg-[#F7B731]/20 text-[#F7B731]' : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
-          }`}>
-            {user?.plan?.toUpperCase()}
+          <span className="shrink-0 rounded-full bg-[#00C896]/15 px-2 py-0.5 text-[10px] font-bold text-[#00C896]">
+            OPEN
           </span>
         </div>
       </div>

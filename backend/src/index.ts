@@ -1,4 +1,3 @@
-import promoRoutes from './routes/promo';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -131,7 +130,6 @@ app.use('/api/interview', interviewRoutes);
 app.use('/api/job-match', jobMatchRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/promo', promoRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
@@ -158,9 +156,13 @@ app.use((err: Error & { statusCode?: number; status?: string }, _req: Request, r
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const startServer = async () => {
   try {
-    await connectDatabase();
+    if (process.env.SKIP_DATABASE !== 'true') {
+      await connectDatabase();
+    } else {
+      logger.warn('Database connection skipped; persistence-backed routes are unavailable.');
+    }
     app.listen(PORT, () => {
-      logger.info(`🚀 ResumeAI Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+      logger.info(`🚀 ResumeForge Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

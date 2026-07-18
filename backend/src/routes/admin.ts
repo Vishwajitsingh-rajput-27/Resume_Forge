@@ -8,8 +8,7 @@ router.use(protect, adminOnly);
 
 router.get('/stats', async (_req: Request, res: Response) => {
   const [users, resumes] = await Promise.all([User.countDocuments(), Resume.countDocuments()]);
-  const pro = await User.countDocuments({ plan: 'pro' });
-  res.json({ users, resumes, proUsers: pro });
+  res.json({ users, resumes });
 });
 
 router.get('/users', async (req: Request, res: Response) => {

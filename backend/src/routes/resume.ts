@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import Resume from '../models/Resume';
 import { protect } from '../middleware/auth';
-import { freemiumGuard } from '../middleware/freemium';
+import { trackUsage } from '../middleware/usage';
 import { analyzeResume } from '../services/ats-engine';
 import { logger } from '../utils/logger';
 
@@ -17,7 +17,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/resumes — create
-router.post('/', freemiumGuard('resumes'), [
+router.post('/', trackUsage('resumesCreated'), [
   body('title').trim().notEmpty().isLength({ max: 150 }),
   body('personalInfo.name').trim().notEmpty(),
   body('personalInfo.email').isEmail(),

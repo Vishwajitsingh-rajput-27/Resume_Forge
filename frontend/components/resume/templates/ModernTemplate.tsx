@@ -1,8 +1,10 @@
 'use client';
 import { useResumeStore } from '@/store/resume-store';
+import type { ResumeTemplateProps } from './types';
 
-export function ModernTemplate() {
-  const { resume } = useResumeStore();
+export function ModernTemplate({ data }: ResumeTemplateProps) {
+  const storedResume = useResumeStore((state) => state.resume);
+  const resume = data ?? storedResume;
   const { personalInfo: p, summary, education, experience, skills, projects, certifications, achievements, languages } = resume;
   const accent = resume.colorTheme || '#00C896';
 

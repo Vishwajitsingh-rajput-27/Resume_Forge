@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Zap, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/auth-store';
@@ -43,12 +43,6 @@ export default function LoginPage() {
     onSuccess: async (tokenResponse) => {
       setGoogleLoading(true);
       try {
-        // Get user info from Google using the access token
-        const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        }).then((r) => r.json());
-
-        // Send to our backend
         await loginWithGoogle(tokenResponse.access_token);
         toast.success('Signed in with Google!');
         router.push('/dashboard');
@@ -79,9 +73,9 @@ export default function LoginPage() {
       >
         <Link href="/" className="flex items-center justify-center gap-2 font-display font-bold text-xl mb-8">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00C896] to-[#6C63FF] flex items-center justify-center shadow-lg shadow-[#00C896]/30">
-            <Zap className="w-4 h-4 text-white" />
+            <FileText className="w-4 h-4 text-white" />
           </div>
-          <span className="text-gradient">ResumeAI</span>
+          <span className="text-gradient">ResumeForge</span>
         </Link>
 
         <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-2xl p-8 shadow-xl">

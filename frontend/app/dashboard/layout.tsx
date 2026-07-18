@@ -8,8 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, refreshUser } = useAuthStore();
 
-  // Sync plan from DB every time dashboard loads
-  // This ensures plan changes (promo codes) take effect without re-login
+  // Keep account details in sync when the dashboard opens.
   useEffect(() => {
     refreshUser();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -36,13 +35,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Plan badge */}
-            <span className={`hidden sm:inline text-[10px] font-bold px-2.5 py-1 rounded-full ${
-              user?.plan !== 'free'
-                ? 'bg-[#F7B731]/20 text-[#F7B731] border border-[#F7B731]/30'
-                : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
-            }`}>
-              {user?.plan?.toUpperCase() ?? 'FREE'}
+            <span className="hidden rounded-full border border-[#00C896]/20 bg-[#00C896]/10 px-2.5 py-1 text-[10px] font-bold text-[#00C896] sm:inline">
+              FREE &amp; OPEN
             </span>
 
             <button className="p-2 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-secondary)] relative">

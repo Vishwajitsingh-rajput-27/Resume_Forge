@@ -7,8 +7,6 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
-  plan: 'free' | 'pro' | 'enterprise';
-  planExpiresAt?: string;
   role: 'user' | 'admin';
   isEmailVerified: boolean;
   usage?: {
@@ -93,7 +91,7 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
 
-      // ── Call this on every dashboard mount and after promo redemption ─────
+      // Refresh the signed-in user's latest account details.
       refreshUser: async () => {
         try {
           const { data } = await api.get('/auth/me');

@@ -198,11 +198,11 @@ ResumeForge is a **unified AI career platform** that generates, scores, and tail
 
 - **10-step guided wizard** — Personal Info → Work Experience → Education → Skills → Projects → Certifications → Languages → Interests → Summary → Review
 - **Live preview panel** — see the formatted resume update in real time as you type
-- **4 ATS-friendly templates** — Classic, Modern, Minimal, Executive — all fully machine-readable
+- **7 ATS-friendly templates** — Modern, Minimal, Corporate, Developer, Creative, Executive, and Compact
 - **AI Summary Generator** — one-click professional summary from your raw experience data
 - **AI Bullet Improver** — paste a weak bullet, get a strong, metrics-driven rewrite instantly
 - **Auto-save** — resume state persisted to MongoDB on every change, no manual saving needed
-- **Version History** *(Pro)* — restore any previous snapshot of your resume
+- **Unlimited resumes and exports** — no paid tiers, watermarks, or template locks
 
 ### 🟢 ATS Score Engine
 
@@ -222,7 +222,7 @@ ResumeForge is a **unified AI career platform** that generates, scores, and tail
 | **Cover Letter Generator** | **Interview Question Generator** |
 
 - **Cover Letter Generator** — AI drafts a fully personalised letter from your resume + job description in seconds; saved per application
-- **Interview Question Generator** — role-aware MCQ and behavioural question bank with model answers; 5 sessions free, unlimited on Pro
+- **Interview Question Generator** — unlimited role-aware MCQ and behavioural question banks with model answers
 - **AI provider toggle** — switch between Groq (speed) and Gemini (quality) with a single env variable, or run `GROQ_FALLBACK` mode for automatic failover
 
 ### 🔴 Portfolio Website
@@ -246,7 +246,7 @@ ResumeForge is a **unified AI career platform** that generates, scores, and tail
 ### ⚪ Infrastructure & UX
 
 - **Dark / Light theme** — Zustand-persisted smooth toggle across sessions
-- **Freemium plan gating** — free / pro tiers enforced via `freemium.ts` middleware on every restricted route
+- **100% free access** — no plan middleware, promo codes, paid routes, or feature gates
 - **Demo mode** — pre-seeded account with resumes, cover letters, and ATS reports ready to inspect instantly
 - **Self-keepalive cron** — pings Render backend every 14 minutes to eliminate free-tier cold starts
 - **Google OAuth** — social sign-in alongside email/password auth
@@ -534,15 +534,9 @@ cd backend && node scripts/seedDemo.js
 
 ---
 
-## 💰 Business Potential
+## 🆓 Free by Design
 
-### Monetization
-
-| Tier | Price | Highlights |
-|:---|:---:|:---|
-| **Free** | $0 / mo | 3 resumes, 20 AI uses/mo, 1 portfolio, 3 cover letters, all templates |
-| **Pro** | $5 / mo | Unlimited everything, version history, advanced analytics, priority AI |
-| **Team** | $15 / mo | Shared workspace, bulk export, recruiter dashboard, SSO |
+ResumeForge has no subscriptions, premium templates, payment routes, or usage-based feature gates. The builder, ATS engine, job matching, portfolios, AI workflows, and exports are available to every account. Deployers can connect Groq or Gemini using their own API keys and provider quotas.
 
 ### Target Market
 

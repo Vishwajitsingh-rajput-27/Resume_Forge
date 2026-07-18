@@ -1,9 +1,11 @@
 'use client';
 import { useResumeStore } from '@/store/resume-store';
+import type { ResumeTemplateProps } from './types';
 
 // ─── Minimal Template ─────────────────────────────────────────────────────────
-export function MinimalTemplate() {
-  const { resume } = useResumeStore();
+export function MinimalTemplate({ data }: ResumeTemplateProps) {
+  const storedResume = useResumeStore((state) => state.resume);
+  const resume = data ?? storedResume;
   const { personalInfo: p, summary, education, experience, skills, projects } = resume;
 
   return (
@@ -86,8 +88,9 @@ export function MinimalTemplate() {
 }
 
 // ─── Corporate Template ────────────────────────────────────────────────────────
-export function CorporateTemplate() {
-  const { resume } = useResumeStore();
+export function CorporateTemplate({ data }: ResumeTemplateProps) {
+  const storedResume = useResumeStore((state) => state.resume);
+  const resume = data ?? storedResume;
   const { personalInfo: p, summary, education, experience, skills } = resume;
   const accent = resume.colorTheme || '#1E3A8A'; // navy default
 
@@ -174,8 +177,9 @@ export function CorporateTemplate() {
 }
 
 // ─── Developer Template ───────────────────────────────────────────────────────
-export function DeveloperTemplate() {
-  const { resume } = useResumeStore();
+export function DeveloperTemplate({ data }: ResumeTemplateProps) {
+  const storedResume = useResumeStore((state) => state.resume);
+  const resume = data ?? storedResume;
   const { personalInfo: p, summary, education, experience, skills, projects } = resume;
   const accent = resume.colorTheme || '#00C896';
 

@@ -6,6 +6,24 @@
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
+  --background: 42 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --primary: 160 84% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 158 64% 92%;
+  --accent-foreground: 160 84% 22%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 160 84% 32%;
+
   /* Brand */
   --brand-primary:    #00C896;   /* emerald-teal */
   --brand-secondary:  #F7B731;   /* warm amber   */
@@ -52,6 +70,24 @@
 }
 
 .dark {
+  --background: 222 47% 6%;
+  --foreground: 210 40% 98%;
+  --card: 222 40% 8%;
+  --card-foreground: 210 40% 98%;
+  --primary: 158 64% 52%;
+  --primary-foreground: 222 47% 7%;
+  --secondary: 217 33% 15%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 15%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 160 38% 16%;
+  --accent-foreground: 158 64% 70%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 158 64% 52%;
+
   --bg-base:     #09090B;
   --bg-elevated: #111113;
   --bg-subtle:   #18181B;

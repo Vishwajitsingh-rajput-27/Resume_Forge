@@ -179,7 +179,7 @@ function parseJSON<T>(raw: string): T {
 
 // ─── Public AI Service Methods ────────────────────────────────────────────────
 
-const SYSTEM = 'You are ResumeAI, an expert career coach and ATS specialist.';
+const SYSTEM = 'You are ResumeForge, an expert career coach and ATS specialist.';
 
 export const AIService = {
   // ── Core ──────────────────────────────────────────────────────────────────
