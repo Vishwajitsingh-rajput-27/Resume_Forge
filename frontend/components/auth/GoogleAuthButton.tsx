@@ -130,9 +130,10 @@ export function GoogleAuthButton({
               theme="outline"
               size="large"
               shape="rectangular"
+              ux_mode="popup"
+              auto_select={false}
               logo_alignment="left"
               width={buttonWidth}
-              use_fedcm_for_button
               containerProps={{
                 className:
                   'flex w-full justify-center [&>div]:!w-full [&_iframe]:!w-full',
