@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { normalizeAccountEmail } from '../utils/email';
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -36,7 +37,15 @@ export interface IUser extends Document {
 const userSchema = new Schema<IUser>(
   {
     name:     { type: String, required: true, trim: true, maxlength: 100 },
-    email:    { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email'] },
+    email:    {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      set: normalizeAccountEmail,
+      match: [/^\S+@\S+\.\S+$/, 'Invalid email'],
+    },
     password: { type: String, minlength: 8, select: false },
     googleId: { type: String, unique: true, sparse: true },
     avatar:   { type: String },

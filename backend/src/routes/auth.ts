@@ -7,8 +7,123 @@ import Resume from '../models/Resume';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { protect } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import {
+  GoogleIdentity,
+  InvalidGoogleCredentialError,
+  isGoogleAuthoritativeForEmail,
+  verifyGoogleCredential,
+} from '../services/google-identity';
+import { normalizeAccountEmail } from '../utils/email';
 
 const router = Router();
+
+class GoogleAccountResolutionError extends Error {
+  constructor(
+    public readonly statusCode: 403 | 409,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'GoogleAccountResolutionError';
+  }
+}
+
+const isDuplicateKeyError = (error: unknown): boolean =>
+  typeof error === 'object'
+  && error !== null
+  && 'code' in error
+  && Number((error as { code?: unknown }).code) === 11000;
+
+const sameUser = (left: IUser, right: IUser) =>
+  String(left._id) === String(right._id);
+
+const googleAccountConflict = () =>
+  new GoogleAccountResolutionError(
+    409,
+    'This Google account conflicts with an existing account. Sign in with email and password.',
+  );
+
+const resolveGoogleUser = async (
+  identity: GoogleIdentity,
+  canRetry = true,
+): Promise<IUser> => {
+  // Look up the stable Google subject first and the email separately. Keeping
+  // these as distinct queries makes account conflicts explicit and prevents an
+  // ambiguous $or result from linking the wrong record.
+  const [googleUser, emailUser] = await Promise.all([
+    User.findOne({ googleId: identity.sub }).select('+refreshToken'),
+    User.findOne({ email: identity.email }).select('+refreshToken'),
+  ]);
+
+  if (googleUser && !googleUser.isActive) {
+    throw new GoogleAccountResolutionError(403, 'Account has been deactivated.');
+  }
+  if (!googleUser && emailUser && !emailUser.isActive) {
+    throw new GoogleAccountResolutionError(403, 'Account has been deactivated.');
+  }
+  if (googleUser && emailUser && !sameUser(googleUser, emailUser)) {
+    throw googleAccountConflict();
+  }
+
+  if (googleUser) {
+    if (
+      normalizeAccountEmail(googleUser.email) === identity.email
+      && !googleUser.isEmailVerified
+    ) {
+      googleUser.isEmailVerified = true;
+    }
+    if (!googleUser.avatar && identity.picture) googleUser.avatar = identity.picture;
+    googleUser.lastLogin = new Date();
+    await googleUser.save({ validateBeforeSave: false });
+    return googleUser;
+  }
+
+  if (emailUser) {
+    if (emailUser.googleId && emailUser.googleId !== identity.sub) {
+      throw googleAccountConflict();
+    }
+    if (!isGoogleAuthoritativeForEmail(identity)) {
+      throw new GoogleAccountResolutionError(
+        409,
+        'An account already exists with this email. Sign in with email and password instead.',
+      );
+    }
+
+    emailUser.googleId = identity.sub;
+    emailUser.isEmailVerified = true;
+    if (!emailUser.avatar && identity.picture) emailUser.avatar = identity.picture;
+    emailUser.lastLogin = new Date();
+
+    try {
+      await emailUser.save({ validateBeforeSave: false });
+      return emailUser;
+    } catch (error) {
+      if (canRetry && isDuplicateKeyError(error)) {
+        return resolveGoogleUser(identity, false);
+      }
+      if (isDuplicateKeyError(error)) throw googleAccountConflict();
+      throw error;
+    }
+  }
+
+  try {
+    return await User.create({
+      name: identity.name,
+      email: identity.email,
+      googleId: identity.sub,
+      avatar: identity.picture,
+      isEmailVerified: true,
+      lastLogin: new Date(),
+    });
+  } catch (error) {
+    // A matching signup may win between the lookups and create. Resolve once
+    // more so duplicate-key races become a login or a clear conflict, not 500.
+    if (canRetry && isDuplicateKeyError(error)) {
+      return resolveGoogleUser(identity, false);
+    }
+    if (isDuplicateKeyError(error)) throw googleAccountConflict();
+    throw error;
+  }
+};
 
 const hashToken = (token: string) =>
   crypto.createHash('sha256').update(token).digest('hex');
@@ -69,7 +184,10 @@ router.post(
       .trim()
       .isLength({ min: 2, max: 100 })
       .withMessage('Name must be between 2 and 100 characters.'),
-    body('email').isEmail().withMessage('Enter a valid email address.').normalizeEmail(),
+    body('email')
+      .customSanitizer((value) => normalizeAccountEmail(String(value)))
+      .isEmail()
+      .withMessage('Enter a valid email address.'),
     body('password')
       .isLength({ min: 8, max: 128 })
       .withMessage('Password must be between 8 and 128 characters.')
@@ -105,7 +223,10 @@ router.post(
 router.post(
   '/login',
   [
-    body('email').isEmail().withMessage('Enter a valid email address.').normalizeEmail(),
+    body('email')
+      .customSanitizer((value) => normalizeAccountEmail(String(value)))
+      .isEmail()
+      .withMessage('Enter a valid email address.'),
     body('password')
       .isString()
       .notEmpty()
@@ -139,88 +260,42 @@ router.post(
 
 router.post(
   '/google',
-  [body('accessToken').isString().notEmpty().withMessage('Google access token required.')],
+  [
+    body('credential')
+      .isString()
+      .withMessage('Google credential is required.')
+      .trim()
+      .notEmpty()
+      .withMessage('Google credential is required.')
+      .isLength({ max: 10_000 })
+      .withMessage('Google credential is invalid.'),
+  ],
   async (req: Request, res: Response) => {
     if (validationError(req, res)) return;
-    const accessToken = String(req.body.accessToken);
 
     try {
       const configuredClientId = process.env.GOOGLE_CLIENT_ID?.trim();
-      if (process.env.NODE_ENV === 'production' && !configuredClientId) {
+      if (!configuredClientId) {
         return res.status(503).json({
           error: 'Google sign-in is not configured on the server.',
         });
       }
 
-      // Google access tokens include an audience. Production requires the
-      // configured client ID so a token issued to another app cannot be reused.
-      if (configuredClientId) {
-        const tokenInfoResponse = await fetch(
-          `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
-        );
-        if (!tokenInfoResponse.ok) {
-          return res.status(401).json({ error: 'Invalid or expired Google token.' });
-        }
-
-        const tokenInfo = (await tokenInfoResponse.json()) as { aud?: string };
-        if (tokenInfo.aud !== configuredClientId) {
-          return res.status(401).json({ error: 'Google token was issued for another application.' });
-        }
-      }
-
-      const googleResponse = await fetch(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+      const identity = await verifyGoogleCredential(
+        String(req.body.credential),
+        configuredClientId,
       );
-      if (!googleResponse.ok) {
-        return res.status(401).json({ error: 'Invalid or expired Google token.' });
-      }
-
-      const profile = (await googleResponse.json()) as {
-        sub?: string;
-        email?: string;
-        email_verified?: boolean;
-        name?: string;
-        picture?: string;
-      };
-
-      if (!profile.sub || !profile.email || profile.email_verified !== true) {
-        return res.status(401).json({ error: 'Google must provide a verified email address.' });
-      }
-
-      const email = profile.email.toLowerCase();
-      let user = await User.findOne({
-        $or: [{ googleId: profile.sub }, { email }],
-      }).select('+refreshToken');
-
-      if (user && !user.isActive) {
-        return res.status(403).json({ error: 'Account has been deactivated.' });
-      }
-      if (user?.googleId && user.googleId !== profile.sub) {
-        return res.status(409).json({
-          error: 'This email is already linked to a different Google account.',
-        });
-      }
-
-      if (!user) {
-        user = await User.create({
-          name: profile.name?.trim() || email.split('@')[0],
-          email,
-          googleId: profile.sub,
-          avatar: profile.picture,
-          isEmailVerified: true,
-        });
-      } else {
-        user.googleId = profile.sub;
-        user.isEmailVerified = true;
-        if (!user.avatar && profile.picture) user.avatar = profile.picture;
-      }
-
-      user.lastLogin = new Date();
+      const user = await resolveGoogleUser(identity);
       return issueTokens(res, user);
     } catch (err) {
+      if (err instanceof InvalidGoogleCredentialError) {
+        return res.status(401).json({ error: err.message });
+      }
+      if (err instanceof GoogleAccountResolutionError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
       logger.error('Google auth error', err);
-      return res.status(500).json({ error: 'Google authentication failed.' });
+      return res.status(500).json({ error: 'Google authentication failed. Please try again.' });
     }
   },
 );
@@ -274,7 +349,12 @@ router.post(
 
 router.post(
   '/forgot-password',
-  [body('email').isEmail().withMessage('Enter a valid email address.').normalizeEmail()],
+  [
+    body('email')
+      .customSanitizer((value) => normalizeAccountEmail(String(value)))
+      .isEmail()
+      .withMessage('Enter a valid email address.'),
+  ],
   async (req: Request, res: Response) => {
     if (validationError(req, res)) return;
 

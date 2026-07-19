@@ -22,7 +22,7 @@ describe('authentication route validation without a database', () => {
     expect(response.body.error).toEqual(expect.any(String));
   });
 
-  it('rejects missing Google, refresh, and reset tokens', async () => {
+  it('rejects missing Google credentials, refresh, and reset tokens', async () => {
     const [google, refresh, reset] = await Promise.all([
       request(app).post('/api/auth/google').send({}),
       request(app).post('/api/auth/refresh').send({}),
@@ -72,23 +72,29 @@ describe('authentication route validation without a database', () => {
     expect(verifyRefreshToken(second).id).toBe(payload.id);
   });
 
-  it('requires a configured Google audience in production', async () => {
-    const previousEnvironment = process.env.NODE_ENV;
+  it('requires a configured Google audience', async () => {
     const previousClientId = process.env.GOOGLE_CLIENT_ID;
-    process.env.NODE_ENV = 'production';
     delete process.env.GOOGLE_CLIENT_ID;
 
     try {
       const response = await request(app)
         .post('/api/auth/google')
-        .send({ accessToken: 'not-a-real-token' });
+        .send({ credential: 'not-a-real-token' });
 
       expect(response.status).toBe(503);
       expect(response.body.error).toMatch(/not configured/i);
     } finally {
-      process.env.NODE_ENV = previousEnvironment;
       if (previousClientId) process.env.GOOGLE_CLIENT_ID = previousClientId;
       else delete process.env.GOOGLE_CLIENT_ID;
     }
+  });
+
+  it('does not accept the legacy Google access-token payload', async () => {
+    const response = await request(app)
+      .post('/api/auth/google')
+      .send({ accessToken: 'legacy-access-token' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toMatch(/credential/i);
   });
 });

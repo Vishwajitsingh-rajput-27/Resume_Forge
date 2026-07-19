@@ -60,20 +60,46 @@ export const getApiErrorMessage = (
   error: unknown,
   fallback = 'Something went wrong. Please try again.',
 ) => {
-  const response = (error as {
+  const requestError = error as {
+    code?: string;
+    message?: string;
+    request?: unknown;
     response?: {
+      status?: number;
       data?: {
         error?: string;
         message?: string;
         errors?: Array<{ msg?: string }>;
       };
     };
-  })?.response;
-
-  return response?.data?.error
+  };
+  const response = requestError?.response;
+  const serverMessage = response?.data?.error
     || response?.data?.errors?.[0]?.msg
-    || response?.data?.message
-    || fallback;
+    || response?.data?.message;
+
+  if (serverMessage) return serverMessage;
+
+  if (requestError?.code === 'ECONNABORTED' || requestError?.code === 'ETIMEDOUT') {
+    return 'The server took too long to respond. Please try again.';
+  }
+
+  if (response?.status && response.status >= 500) {
+    return 'ResumeForge is temporarily unavailable. Please try again in a moment.';
+  }
+
+  if (
+    requestError?.code === 'ERR_NETWORK'
+    || requestError?.message === 'Network Error'
+    || (requestError?.request && !response)
+  ) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return 'You appear to be offline. Check your connection and try again.';
+    }
+    return 'We could not reach ResumeForge. The server may be waking up, so please try again in a moment.';
+  }
+
+  return fallback;
 };
 
 const api = axios.create({
